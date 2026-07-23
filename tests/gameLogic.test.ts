@@ -104,9 +104,30 @@ describe("연타 입력 방지", () => {
       notes: [{ time: 2, lane: 0, type: "hold", duration: 1 }],
     });
 
-    expect(engine.press(0, 2)?.judgement).toBe("Perfect");
+    expect(engine.press(0, 2)).toMatchObject({
+      judgement: "Perfect",
+      displayJudgement: false,
+    });
     expect(engine.update(3, new Set())).toEqual([{ judgement: "Bad", deltaMs: 0, lane: 0 }]);
     expect(engine.score.counts.Bad).toBe(1);
+  });
+
+  it("롱노트는 시작이 아니라 끝까지 누른 시점에 최종 판정을 표시한다", () => {
+    const engine = new GameEngine();
+    engine.load({
+      title: "Hold judgement at the tail",
+      audio: "./audio/song.mp3",
+      offset: 0,
+      bpm: 120,
+      difficulty: "normal",
+      notes: [{ time: 2, lane: 3, type: "hold", duration: 1 }],
+    });
+
+    expect(engine.press(3, 2)?.displayJudgement).toBe(false);
+    const events = engine.update(3, new Set([3]));
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ judgement: "Perfect", lane: 3 });
+    expect(events[0].displayJudgement).not.toBe(false);
   });
 });
 

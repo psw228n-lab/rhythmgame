@@ -12,6 +12,7 @@ export interface GameEvent {
   judgement: Judgement;
   deltaMs: number;
   lane: number;
+  displayJudgement?: boolean;
 }
 
 export class GameEngine {
@@ -47,7 +48,7 @@ export class GameEngine {
     if (candidate.type === "hold") {
       candidate.status = "holding";
       candidate.pendingJudgement = judgement;
-      return { judgement, deltaMs, lane };
+      return { judgement, deltaMs, lane, displayJudgement: false };
     }
     candidate.status = "hit";
     this.score = applyJudgement(this.score, judgement);

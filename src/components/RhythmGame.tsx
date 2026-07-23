@@ -138,14 +138,16 @@ export default function RhythmGame() {
         { lane: event.lane, judgement: event.judgement, startedAtMs },
       ].slice(-12);
     }
-    const displayId = ++judgementDisplayIdRef.current;
-    setJudgementDisplays((current) => [...current, { ...event, displayId }].slice(-16));
+    if (event.displayJudgement !== false) {
+      const displayId = ++judgementDisplayIdRef.current;
+      setJudgementDisplays((current) => [...current, { ...event, displayId }].slice(-16));
+      const timer = window.setTimeout(() => {
+        setJudgementDisplays((current) => current.filter((item) => item.displayId !== displayId));
+        judgementTimersRef.current.delete(timer);
+      }, 560);
+      judgementTimersRef.current.add(timer);
+    }
     setRevision((value) => value + 1);
-    const timer = window.setTimeout(() => {
-      setJudgementDisplays((current) => current.filter((item) => item.displayId !== displayId));
-      judgementTimersRef.current.delete(timer);
-    }, 560);
-    judgementTimersRef.current.add(timer);
   }, []);
 
   const finishGame = useCallback(() => {
@@ -406,7 +408,6 @@ export default function RhythmGame() {
                 <div
                   className={`judgement-pop ${display.judgement.toLowerCase()}`}
                   key={display.displayId}
-                  style={{ left: `${(display.lane + 0.5) * 25}%` }}
                 >
                   <strong>{display.judgement}</strong>
                   <span>{display.deltaMs > 0 ? "+" : ""}{Math.round(display.deltaMs)}ms</span>
