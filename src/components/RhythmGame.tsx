@@ -410,7 +410,6 @@ export default function RhythmGame() {
                   key={display.displayId}
                 >
                   <strong>{display.judgement}</strong>
-                  <span>{display.deltaMs > 0 ? "+" : ""}{Math.round(display.deltaMs)}ms</span>
                 </div>
               ))}
             </div>
