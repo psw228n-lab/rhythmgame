@@ -5,6 +5,7 @@ import type { ChartNote } from "../src/game/types";
 // 이 모듈은 Node 기반 자동 채보 생성기와 동일한 후처리 함수를 사용합니다.
 import { sanitizeGeneratedNotes } from "../scripts/chartAnalysis.mjs";
 import { GameEngine } from "../src/game/GameEngine";
+import { InputManager } from "../src/game/InputManager";
 
 describe("판정 시간 계산", () => {
   it("경계값을 설정대로 판정한다", () => {
@@ -47,6 +48,36 @@ describe("연타 입력 방지", () => {
 
     expect(engine.press(1, 2)?.judgement).toBe("Miss");
     expect(engine.score.counts.Miss).toBe(1);
+  });
+});
+
+describe("빠른 동일 레인 입력", () => {
+  it("새 keydown은 같은 레인에서도 즉시 다시 받아들이고 OS 자동 반복만 무시한다", () => {
+    const input = new InputManager();
+    expect(input.press("KeyZ", false)).toBe(0);
+    expect(input.press("KeyZ", true)).toBeNull();
+    expect(input.press("KeyZ", false)).toBe(0);
+    expect(input.release("KeyZ")).toBe(0);
+    expect(input.press("KeyZ", false)).toBe(0);
+  });
+
+  it("75ms 간격의 동일 레인 노트 두 개를 각각 판정한다", () => {
+    const engine = new GameEngine();
+    engine.load({
+      title: "Fast jack",
+      audio: "./audio/song.mp3",
+      offset: 0,
+      bpm: 180,
+      difficulty: "hard",
+      notes: [
+        { time: 2, lane: 2, type: "tap" },
+        { time: 2.075, lane: 2, type: "tap" },
+      ],
+    });
+
+    expect(engine.press(2, 2)?.judgement).toBe("Perfect");
+    expect(engine.press(2, 2.075)?.judgement).toBe("Perfect");
+    expect(engine.score.counts.Perfect).toBe(2);
   });
 });
 

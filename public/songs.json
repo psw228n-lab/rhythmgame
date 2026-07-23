@@ -7,6 +7,8 @@
     "duration": 246.503,
     "accent": "#ff3d81",
     "cover": "./covers/i-really-want-to-stay-at-your-house.png",
+    "fadeOutAt": 94,
+    "fadeOutDuration": 2.5,
     "charts": {
       "easy": "./charts/easy.json",
       "normal": "./charts/normal.json",
@@ -21,6 +23,8 @@
     "duration": 212.486,
     "accent": "#45d9ff",
     "cover": "./covers/faded.png",
+    "fadeOutAt": 98,
+    "fadeOutDuration": 2.5,
     "charts": {
       "easy": "./charts/faded/easy.json",
       "normal": "./charts/faded/normal.json",

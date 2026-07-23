@@ -33,7 +33,7 @@ export default function SongSelect({ songs, selectedId, onSelect }: Props) {
               <p>{song.artist}</p>
               <div className="song-specs">
                 <span><b>{song.bpm}</b> BPM</span>
-                <span><b>{formatDuration(song.duration)}</b> LENGTH</span>
+                <span><b>{formatDuration(song.fadeOutAt + song.fadeOutDuration)}</b> PLAY TIME</span>
                 <span><b>3</b> DIFFICULTIES</span>
               </div>
               <button className="button button-primary" onClick={() => onSelect(song)}>

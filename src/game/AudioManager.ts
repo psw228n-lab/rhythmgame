@@ -5,6 +5,7 @@ export class AudioManager {
   private gain: GainNode | null = null;
   private sfxGain: GainNode | null = null;
   private noiseBuffer: AudioBuffer | null = null;
+  private cheerBuffer: AudioBuffer | null = null;
   private volume = 1;
 
   constructor() {
@@ -38,6 +39,7 @@ export class AudioManager {
       this.noiseBuffer = this.createNoiseBuffer(0.18);
       this.source.connect(this.gain).connect(this.context.destination);
       this.sfxGain.connect(this.context.destination);
+      this.cheerBuffer = this.createNoiseBuffer(2.2);
     }
     if (this.context.state === "suspended") await this.context.resume();
   }
@@ -65,10 +67,67 @@ export class AudioManager {
     }
   }
 
+  fadeOutMusic(duration: number) {
+    if (!this.gain || !this.context) return;
+    const now = this.context.currentTime;
+    const safeDuration = Math.max(0.1, duration);
+    this.gain.gain.cancelScheduledValues(now);
+    this.gain.gain.setValueAtTime(Math.max(0, this.gain.gain.value), now);
+    this.gain.gain.linearRampToValueAtTime(0, now + safeDuration);
+  }
+
+  resetMusicFade() {
+    if (!this.gain || !this.context) return;
+    const now = this.context.currentTime;
+    this.gain.gain.cancelScheduledValues(now);
+    this.gain.gain.setValueAtTime(this.volume, now);
+  }
+
   playHitSound() {
     if (!this.context || !this.sfxGain || this.context.state !== "running") return;
     const now = this.context.currentTime;
     this.playSnare(now);
+  }
+
+  playCrowdCheer() {
+    if (!this.context || !this.sfxGain || !this.cheerBuffer || this.context.state !== "running") return;
+    const now = this.context.currentTime;
+    const crowd = this.context.createBufferSource();
+    const highpass = this.context.createBiquadFilter();
+    const lowpass = this.context.createBiquadFilter();
+    const envelope = this.context.createGain();
+    crowd.buffer = this.cheerBuffer;
+    highpass.type = "highpass";
+    highpass.frequency.value = 320;
+    lowpass.type = "lowpass";
+    lowpass.frequency.value = 4200;
+    envelope.gain.setValueAtTime(0.0001, now);
+    envelope.gain.exponentialRampToValueAtTime(0.34, now + 0.09);
+    envelope.gain.setValueAtTime(0.28, now + 1.15);
+    envelope.gain.exponentialRampToValueAtTime(0.0001, now + 2.2);
+    crowd.connect(highpass).connect(lowpass).connect(envelope).connect(this.sfxGain);
+    crowd.start(now);
+    crowd.stop(now + 2.2);
+
+    for (let index = 0; index < 7; index += 1) {
+      const start = now + 0.04 + index * 0.065;
+      const duration = 0.7 + (index % 3) * 0.18;
+      const voice = this.context.createOscillator();
+      const voiceEnvelope = this.context.createGain();
+      voice.type = index % 2 === 0 ? "triangle" : "sawtooth";
+      voice.frequency.setValueAtTime(260 + (index % 4) * 54, start);
+      voice.frequency.exponentialRampToValueAtTime(390 + (index % 4) * 62, start + duration * 0.62);
+      voiceEnvelope.gain.setValueAtTime(0.0001, start);
+      voiceEnvelope.gain.exponentialRampToValueAtTime(0.026, start + 0.08);
+      voiceEnvelope.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+      voice.connect(voiceEnvelope).connect(this.sfxGain);
+      voice.start(start);
+      voice.stop(start + duration);
+    }
+
+    for (let index = 0; index < 12; index += 1) {
+      this.playNoise(now + 0.12 + index * 0.13, 0.055, 2300, 0.055 + (index % 3) * 0.012);
+    }
   }
 
   private playSnare(now: number) {

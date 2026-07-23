@@ -28,6 +28,8 @@ export default function RhythmGame() {
   const countdownTimerRef = useRef<number | null>(null);
   const latestEventRef = useRef<GameEvent | null>(null);
   const hitEffectsRef = useRef<HitEffect[]>([]);
+  const fadeStartedRef = useRef(false);
+  const finishStartedRef = useRef(false);
 
   const [mode, setMode] = useState<Mode>("songs");
   const [phase, setPhase] = useState<Phase>("idle");
@@ -133,7 +135,10 @@ export default function RhythmGame() {
   }, []);
 
   const finishGame = useCallback(() => {
-    if (!chart || !selectedSong) return;
+    if (!audio || !chart || !selectedSong || finishStartedRef.current) return;
+    finishStartedRef.current = true;
+    audio.pause();
+    audio.playCrowdCheer();
     const accuracy = engine.getAccuracy();
     const rank = engine.getRank();
     rankingService.saveLocalRecord(selectedSong.id, chart.difficulty, {
@@ -145,7 +150,7 @@ export default function RhythmGame() {
     });
     setPhase("results");
     setRevision((value) => value + 1);
-  }, [chart, engine, selectedSong]);
+  }, [audio, chart, engine, selectedSong]);
 
   useEffect(() => {
     if (!audio) return;
@@ -157,7 +162,7 @@ export default function RhythmGame() {
   useEffect(() => {
     if (!audio || mode !== "play") return;
     const handleKeyDown = (event: KeyboardEvent) => {
-      const lane = inputRef.current.press(event.code);
+      const lane = inputRef.current.press(event.code, event.repeat);
       if (lane === null) return;
       event.preventDefault();
       if (phase === "playing") {
@@ -194,8 +199,18 @@ export default function RhythmGame() {
       const canvas = canvasRef.current;
       const gameTime = audio.currentTime + settings.audioOffset / 1000 + (chart?.offset ?? 0);
       if (phase === "playing") {
-        const events = engine.update(gameTime, inputRef.current.heldLanes);
-        if (events.length) showEvent(events[events.length - 1]);
+        const fadeOutAt = selectedSong?.fadeOutAt ?? audio.duration;
+        const fadeOutDuration = selectedSong?.fadeOutDuration ?? 2.5;
+        if (!fadeStartedRef.current && audio.currentTime >= fadeOutAt) {
+          fadeStartedRef.current = true;
+          audio.fadeOutMusic(fadeOutDuration);
+        }
+        if (audio.currentTime >= fadeOutAt + fadeOutDuration) {
+          finishGame();
+        } else {
+          const events = engine.update(gameTime, inputRef.current.heldLanes);
+          if (events.length) showEvent(events[events.length - 1]);
+        }
       }
       if (canvas) {
         hitEffectsRef.current = hitEffectsRef.current.filter((effect) => timestamp - effect.startedAtMs < 380);
@@ -218,7 +233,7 @@ export default function RhythmGame() {
     };
     frame = requestAnimationFrame(render);
     return () => cancelAnimationFrame(frame);
-  }, [audio, chart, engine, mode, phase, settings.audioOffset, settings.noteSpeed, showEvent]);
+  }, [audio, chart, engine, finishGame, mode, phase, selectedSong, settings.audioOffset, settings.noteSpeed, showEvent]);
 
   useEffect(() => {
     const handleVisibility = () => {
@@ -245,10 +260,13 @@ export default function RhythmGame() {
     try {
       await audio.unlock();
       audio.pause();
+      audio.resetMusicFade();
       audio.seek(0);
       engine.load(chart);
       inputRef.current.clear();
       hitEffectsRef.current = [];
+      fadeStartedRef.current = false;
+      finishStartedRef.current = false;
       setCountdown(3);
       setPhase("countdown");
       setJudgement(null);
@@ -289,6 +307,7 @@ export default function RhythmGame() {
 
   const changeMode = (nextMode: Mode) => {
     audio?.pause();
+    audio?.resetMusicFade();
     inputRef.current.clear();
     setPhase("idle");
     setMode(nextMode);
@@ -296,6 +315,7 @@ export default function RhythmGame() {
 
   const selectSong = (song: SongDefinition) => {
     audio?.pause();
+    audio?.resetMusicFade();
     inputRef.current.clear();
     setSelectedSong(song);
     setDifficulty("normal");
@@ -309,7 +329,10 @@ export default function RhythmGame() {
     () => typeof window === "undefined" || !selectedSong ? undefined : rankingService.getLocalRecord(selectedSong.id, difficulty),
     [difficulty, revision, selectedSong],
   );
-  const progress = audio?.duration ? (clock / audio.duration) * 100 : 0;
+  const gameEndTime = selectedSong
+    ? selectedSong.fadeOutAt + selectedSong.fadeOutDuration
+    : audio?.duration ?? 0;
+  const progress = gameEndTime ? (clock / gameEndTime) * 100 : 0;
 
   return (
     <main className="app-shell" data-testid="rhythm-game">
@@ -393,7 +416,7 @@ export default function RhythmGame() {
           <footer className="transport-bar">
             <span>{formatTime(clock)}</span>
             <div className="progress-track"><i style={{ width: `${Math.min(100, progress)}%` }} /></div>
-            <span>{formatTime(audio?.duration ?? 0)}</span>
+            <span>{formatTime(gameEndTime)}</span>
             <div className="bpm-chip"><b>{chart ? Math.round(chart.bpm) : "---"}</b><small>BPM</small></div>
           </footer>
         </div>

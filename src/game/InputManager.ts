@@ -8,9 +8,9 @@ export class InputManager {
     return lane >= 0 ? lane : null;
   }
 
-  press(code: string) {
+  press(code: string, isKeyboardRepeat = false) {
     const lane = this.laneForCode(code);
-    if (lane === null || this.pressed.has(lane)) return null;
+    if (lane === null || isKeyboardRepeat) return null;
     this.pressed.add(lane);
     return lane;
   }
