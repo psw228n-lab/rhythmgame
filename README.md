@@ -20,11 +20,10 @@ npm run dev
 | 1~4번 레인 | `Z`, `X`, `C`, `V` (`KeyboardEvent.code`의 `KeyZ`~`KeyV`) |
 | 게임 시작 / 재시작 | 우측 `START RUN` / `↻` |
 | 일시정지 | 우측 `PAUSE` |
-| 에디터 기록 | `CHART LAB`에서 음악을 들으며 `Z`, `X`, `C`, `V` |
-| 노트 추가 / 선택 | 에디터 타임라인 클릭 |
+| 타격 효과음 | 플레이 중 각 레인 키를 누르면 레인별 전자음 재생 |
 | 싱크 측정 | `SYNC`에서 테스트 비트에 맞춰 아무 레인 키 입력 |
 
-처음 열면 `SONG SELECT` 화면이 표시됩니다. 곡을 선택하면 플레이 화면으로 이동합니다.
+처음 열면 리더보드에 사용할 플레이어 이름을 입력한 뒤 `SONG SELECT` 화면이 표시됩니다. 곡을 선택하면 플레이 화면으로 이동합니다.
 
 판정 범위는 `src/game/config.ts`에서 바꿀 수 있습니다.
 
@@ -100,19 +99,6 @@ CHART_AUDIO_PATH="public/audio/another-song.mp3" npm run generate-chart
   ]
 }
 ```
-
-## 채보 에디터
-
-상단 `CHART LAB`에서 자동 생성 채보를 수정할 수 있습니다.
-
-- 음악 재생/일시정지, 0.5× / 0.75× / 1× 속도
-- 타임라인 이동과 4초 구간 반복
-- 키 입력 또는 클릭으로 노트 추가
-- 노트 선택, 삭제, ±10ms 미세 조정, 레인 변경
-- 전체 오프셋 조정
-- JSON 불러오기 / 내보내기
-
-기록 시각은 프레임 수가 아니라 오디오 요소의 실제 `currentTime`을 사용합니다.
 
 ## Supabase 글로벌 랭킹 설정
 
@@ -200,7 +186,6 @@ public/charts/*.json         실제 분석으로 생성한 3개 채보
 scripts/generateChart.mjs    MP3 디코딩 및 채보 생성 진입점
 scripts/chartAnalysis.mjs    BPM/온셋/에너지 분석과 난이도 패턴
 src/components/              게임 화면과 싱크 보정 UI
-src/editor/ChartEditor.tsx   채보 에디터
 src/game/                    오디오, 입력, 판정, Canvas, 엔진 모듈
 src/services/                localStorage 기록 어댑터
 supabase/schema.sql           공개 랭킹 테이블과 RLS 정책

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import ChartEditor from "../editor/ChartEditor";
 import { AudioManager } from "../game/AudioManager";
 import { DEFAULT_SETTINGS, LANE_COLORS, LANE_LABELS } from "../game/config";
 import { GameEngine, type GameEvent } from "../game/GameEngine";
@@ -13,10 +12,11 @@ import type { SongDefinition } from "../game/types";
 import { rankingService } from "../services/rankingService";
 import CalibrationPanel from "./CalibrationPanel";
 import LeaderboardPanel from "./LeaderboardPanel";
+import PlayerNameGate from "./PlayerNameGate";
 import ScoreSubmission from "./ScoreSubmission";
 import SongSelect from "./SongSelect";
 
-type Mode = "songs" | "play" | "ranking" | "editor" | "calibration";
+type Mode = "songs" | "play" | "ranking" | "calibration";
 type Phase = "idle" | "countdown" | "playing" | "paused" | "results";
 
 export default function RhythmGame() {
@@ -42,6 +42,9 @@ export default function RhythmGame() {
   const [revision, setRevision] = useState(0);
   const [clock, setClock] = useState(0);
   const [leaderboardRefresh, setLeaderboardRefresh] = useState(0);
+  const [playerName, setPlayerName] = useState("");
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [playerReady, setPlayerReady] = useState(false);
 
   if (!audioRef.current && typeof window !== "undefined") audioRef.current = new AudioManager();
   const audio = audioRef.current;
@@ -49,6 +52,10 @@ export default function RhythmGame() {
 
   useEffect(() => {
     setSettings(rankingService.getSettings(DEFAULT_SETTINGS));
+    const savedPlayerName = rankingService.getPlayerName();
+    setPlayerName(savedPlayerName);
+    setPlayerReady(savedPlayerName.length >= 2);
+    setProfileLoaded(true);
   }, []);
 
   useEffect(() => {
@@ -146,6 +153,7 @@ export default function RhythmGame() {
       if (lane === null) return;
       event.preventDefault();
       if (phase === "playing") {
+        audio.playHitSound(lane);
         const gameTime = audio.currentTime + settings.audioOffset / 1000 + (chart?.offset ?? 0);
         const result = engine.press(lane, gameTime);
         if (result) showEvent(result);
@@ -303,11 +311,16 @@ export default function RhythmGame() {
           <button className={mode === "songs" ? "active" : ""} onClick={() => changeMode("songs")}>SONG SELECT</button>
           <button className={mode === "play" ? "active" : ""} onClick={() => changeMode("play")}>PLAY</button>
           <button className={mode === "ranking" ? "active" : ""} onClick={() => changeMode("ranking")}>RANKING</button>
-          <button className={mode === "editor" ? "active" : ""} onClick={() => changeMode("editor")}>CHART LAB</button>
           <button className={mode === "calibration" ? "active" : ""} onClick={() => changeMode("calibration")}>SYNC</button>
         </nav>
-        <div className={`system-status ${loaded ? "online" : ""}`}>
-          <span /> {loaded ? "SYSTEM READY" : "LOADING"}
+        <div className="topbar-profile">
+          <button className="player-badge" type="button" disabled={phase === "playing" || phase === "countdown"} onClick={() => setPlayerReady(false)} aria-label="플레이어 이름 변경">
+            <span>PLAYER</span>
+            <strong>{playerName || "SET NAME"}</strong>
+          </button>
+          <div className={`system-status ${loaded ? "online" : ""}`}>
+            <span /> {loaded ? "SYSTEM READY" : "LOADING"}
+          </div>
         </div>
       </header>
 
@@ -375,7 +388,6 @@ export default function RhythmGame() {
       )}
 
       {mode === "ranking" && <LeaderboardPanel songs={songs} initialSongId={selectedSong?.id} refreshKey={leaderboardRefresh} />}
-      {mode === "editor" && audio && chart && <ChartEditor audio={audio} chart={chart} onChartChange={(next) => { setChart(next); engine.load(next); }} onMessage={setMessage} />}
       {mode === "calibration" && <CalibrationPanel currentOffset={settings.audioOffset} onApply={(audioOffset) => { setSettings((value) => ({ ...value, audioOffset })); setMessage(`싱크 오프셋을 ${audioOffset}ms로 저장했습니다.`); changeMode("play"); }} />}
 
       {phase === "results" && (
@@ -401,6 +413,15 @@ export default function RhythmGame() {
       )}
 
       <div className="mobile-guard"><strong>DESKTOP LINK REQUIRED</strong><p>정확한 키 입력과 4레인 플레이를 위해 데스크톱 브라우저에서 열어 주세요.</p></div>
+      {profileLoaded && !playerReady && (
+        <PlayerNameGate
+          initialName={playerName}
+          onSaved={(name) => {
+            setPlayerName(name);
+            setPlayerReady(true);
+          }}
+        />
+      )}
     </main>
   );
 }
