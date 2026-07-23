@@ -1,0 +1,15 @@
+[
+  {
+    "id": "i-really-want-to-stay-at-your-house",
+    "title": "I Really Want to Stay at Your House",
+    "artist": "Rosa Walton",
+    "bpm": 123.5,
+    "duration": 246.503,
+    "accent": "#ff3d81",
+    "charts": {
+      "easy": "./charts/easy.json",
+      "normal": "./charts/normal.json",
+      "hard": "./charts/hard.json"
+    }
+  }
+]

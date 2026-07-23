@@ -1,0 +1,110 @@
+import { JUDGEMENT_WINDOWS } from "./config";
+import { applyJudgement, calculateAccuracy, calculateRank, createScoreState, judgeTiming } from "./JudgeManager";
+import type { Chart, ChartNote, Judgement, ScoreState } from "./types";
+
+export interface RuntimeNote extends ChartNote {
+  id: number;
+  status: "pending" | "holding" | "hit" | "miss";
+  pendingJudgement?: Judgement;
+}
+
+export interface GameEvent {
+  judgement: Judgement;
+  deltaMs: number;
+  lane: number;
+}
+
+export class GameEngine {
+  notes: RuntimeNote[] = [];
+  score: ScoreState = createScoreState();
+  private nextMissIndex = 0;
+
+  load(chart: Chart) {
+    this.notes = chart.notes.map((note, id) => ({ ...note, id, status: "pending" }));
+    this.score = createScoreState();
+    this.nextMissIndex = 0;
+  }
+
+  press(lane: number, audioTime: number): GameEvent | null {
+    let candidate: RuntimeNote | undefined;
+    let bestDistance = Number.POSITIVE_INFINITY;
+    for (let index = this.nextMissIndex; index < this.notes.length; index += 1) {
+      const note = this.notes[index];
+      if (note.time > audioTime + JUDGEMENT_WINDOWS.Good / 1000) break;
+      if (note.status !== "pending" || note.lane !== lane) continue;
+      const distance = Math.abs(note.time - audioTime);
+      if (distance < bestDistance) {
+        candidate = note;
+        bestDistance = distance;
+      }
+    }
+    if (!candidate) return null;
+
+    const deltaMs = (audioTime - candidate.time) * 1000;
+    const judgement = judgeTiming(deltaMs);
+    if (judgement === "Miss") return null;
+
+    if (candidate.type === "hold") {
+      candidate.status = "holding";
+      candidate.pendingJudgement = judgement;
+      return { judgement, deltaMs, lane };
+    }
+    candidate.status = "hit";
+    this.score = applyJudgement(this.score, judgement);
+    this.advanceMissCursor();
+    return { judgement, deltaMs, lane };
+  }
+
+  release(lane: number, audioTime: number): GameEvent | null {
+    const note = this.notes.find((item) => item.status === "holding" && item.lane === lane);
+    if (!note) return null;
+    const endTime = note.time + (note.duration ?? 0);
+    const heldLongEnough = audioTime >= endTime - JUDGEMENT_WINDOWS.Good / 1000;
+    const judgement = heldLongEnough ? note.pendingJudgement ?? "Good" : "Miss";
+    note.status = heldLongEnough ? "hit" : "miss";
+    this.score = applyJudgement(this.score, judgement);
+    this.advanceMissCursor();
+    return { judgement, deltaMs: (audioTime - endTime) * 1000, lane };
+  }
+
+  update(audioTime: number, heldLanes: Set<number>): GameEvent[] {
+    const events: GameEvent[] = [];
+    for (let index = this.nextMissIndex; index < this.notes.length; index += 1) {
+      const note = this.notes[index];
+      if (note.status === "holding") {
+        const endTime = note.time + (note.duration ?? 0);
+        if (audioTime >= endTime && heldLanes.has(note.lane)) {
+          note.status = "hit";
+          const judgement = note.pendingJudgement ?? "Good";
+          this.score = applyJudgement(this.score, judgement);
+          events.push({ judgement, deltaMs: 0, lane: note.lane });
+        }
+        continue;
+      }
+      if (note.status !== "pending") continue;
+      if (audioTime <= note.time + JUDGEMENT_WINDOWS.Good / 1000) break;
+      note.status = "miss";
+      this.score = applyJudgement(this.score, "Miss");
+      events.push({ judgement: "Miss", deltaMs: (audioTime - note.time) * 1000, lane: note.lane });
+    }
+    this.advanceMissCursor();
+    return events;
+  }
+
+  getAccuracy() {
+    return calculateAccuracy(this.score);
+  }
+
+  getRank() {
+    return calculateRank(this.getAccuracy());
+  }
+
+  private advanceMissCursor() {
+    while (
+      this.nextMissIndex < this.notes.length &&
+      ["hit", "miss"].includes(this.notes[this.nextMissIndex].status)
+    ) {
+      this.nextMissIndex += 1;
+    }
+  }
+}
