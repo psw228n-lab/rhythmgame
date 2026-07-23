@@ -73,11 +73,12 @@ export class GameEngine {
       const note = this.notes[index];
       if (note.status === "holding") {
         const endTime = note.time + (note.duration ?? 0);
-        if (audioTime >= endTime && heldLanes.has(note.lane)) {
-          note.status = "hit";
-          const judgement = note.pendingJudgement ?? "Good";
+        if (audioTime >= endTime) {
+          const completed = heldLanes.has(note.lane);
+          note.status = completed ? "hit" : "miss";
+          const judgement = completed ? note.pendingJudgement ?? "Good" : "Bad";
           this.score = applyJudgement(this.score, judgement);
-          events.push({ judgement, deltaMs: 0, lane: note.lane });
+          events.push({ judgement, deltaMs: (audioTime - endTime) * 1000, lane: note.lane });
         }
         continue;
       }

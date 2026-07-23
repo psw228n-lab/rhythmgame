@@ -6,7 +6,7 @@ import { DEFAULT_SETTINGS, LANE_COLORS, LANE_LABELS } from "../game/config";
 import { GameEngine, type GameEvent } from "../game/GameEngine";
 import { InputManager } from "../game/InputManager";
 import { NoteManager, type HitEffect } from "../game/NoteManager";
-import { validateChart } from "../game/chartUtils";
+import { removePostHoldLaneConflicts, validateChart } from "../game/chartUtils";
 import type { Chart, Difficulty, GameSettings } from "../game/types";
 import type { SongDefinition } from "../game/types";
 import { rankingService } from "../services/rankingService";
@@ -99,9 +99,11 @@ export default function RhythmGame() {
         const gameEndTime = selectedSong.fadeOutAt + selectedSong.fadeOutDuration;
         const playableChart: Chart = {
           ...data,
-          notes: data.notes.filter((note) =>
-            note.time < gameEndTime - 0.08 &&
-            (note.type !== "hold" || note.time + (note.duration ?? 0) < gameEndTime - 0.04)
+          notes: removePostHoldLaneConflicts(
+            data.notes.filter((note) =>
+              note.time < gameEndTime - 0.08 &&
+              (note.type !== "hold" || note.time + (note.duration ?? 0) < gameEndTime - 0.04)
+            ),
           ),
         };
         audio.setVolume(settings.volume);
@@ -396,7 +398,26 @@ export default function RhythmGame() {
             <div className={`judgement-pop ${judgement ? judgement.judgement.toLowerCase() : ""}`} aria-live="polite">
               {judgement && <><strong>{judgement.judgement}</strong><span>{judgement.deltaMs > 0 ? "+" : ""}{Math.round(judgement.deltaMs)}ms</span></>}
             </div>
-            {phase === "countdown" && <div className="countdown" aria-live="assertive"><span>GET READY</span><strong>{countdown || "GO"}</strong></div>}
+            {phase === "countdown" && (
+              <div className="countdown" aria-live="assertive">
+                <span>GET READY</span>
+                <strong>{countdown || "GO"}</strong>
+                <div className="lane-key-guide" aria-hidden="true">
+                  {LANE_LABELS.map((key, lane) => (
+                    <div className="lane-key-guide-cell" key={key}>
+                      <kbd
+                        style={{
+                          "--lane-color": LANE_COLORS[lane],
+                          "--lane-guide-delay": `${lane * 90}ms`,
+                        } as React.CSSProperties}
+                      >
+                        {key}
+                      </kbd>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {phase === "idle" && <div className="idle-prompt"><span>PRESS START TO CONNECT</span><div className="key-row">{LANE_LABELS.map((key, lane) => <kbd key={key} style={{ "--lane-color": LANE_COLORS[lane] } as React.CSSProperties}>{key}</kbd>)}</div></div>}
             {phase === "paused" && <div className="pause-overlay"><span>PLAYBACK SUSPENDED</span><strong>PAUSED</strong></div>}
           </section>

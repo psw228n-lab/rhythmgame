@@ -2,10 +2,10 @@ import type { Difficulty, GameSettings, Judgement } from "./types";
 
 // 판정과 점수는 이 파일만 수정하면 게임 전체에 반영됩니다.
 export const JUDGEMENT_WINDOWS: Record<Judgement, number> = {
-  Perfect: 60,
-  Great: 110,
-  Good: 170,
-  Bad: 230,
+  Perfect: 85,
+  Great: 150,
+  Good: 225,
+  Bad: 320,
 };
 
 export const SCORE_VALUES: Record<Judgement, number> = {

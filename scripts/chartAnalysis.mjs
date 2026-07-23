@@ -243,7 +243,7 @@ export function sanitizeGeneratedNotes(notes, difficulty, duration) {
       output.some((item) =>
         item.type === "hold" &&
         item.lane === note.lane &&
-        item.time + (item.duration ?? 0) > note.time + 0.03
+        item.time + (item.duration ?? 0) + 0.32 > note.time
       )
     ) continue;
     if (note.type === "hold") note.duration = Number(Math.max(0.28, Math.min(note.duration ?? 0.5, duration - note.time - 0.1)).toFixed(3));

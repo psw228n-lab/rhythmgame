@@ -1,6 +1,8 @@
 import { DIFFICULTY_LIMITS } from "./config";
 import type { Chart, ChartNote, Difficulty } from "./types";
 
+export const POST_HOLD_LANE_CLEARANCE_SECONDS = 0.32;
+
 export function validateChart(value: unknown): value is Chart {
   if (!value || typeof value !== "object") return false;
   const chart = value as Partial<Chart>;
@@ -26,6 +28,27 @@ export function validateChart(value: unknown): value is Chart {
       (note.type === "tap" ||
         (typeof note.duration === "number" && note.duration > 0)),
   );
+}
+
+// 롱 노트를 놓은 직후 같은 손가락으로 다시 눌러야 하는 불편한 배치를 제거합니다.
+export function removePostHoldLaneConflicts(
+  notes: ChartNote[],
+  clearance = POST_HOLD_LANE_CLEARANCE_SECONDS,
+): ChartNote[] {
+  const blockedUntil = [-Infinity, -Infinity, -Infinity, -Infinity];
+  const sorted = [...notes].sort((a, b) => a.time - b.time || a.lane - b.lane);
+
+  return sorted.filter((note) => {
+    if (!Number.isInteger(note.lane) || note.lane < 0 || note.lane > 3) return false;
+    if (note.time < blockedUntil[note.lane] - 0.0001) return false;
+    if (note.type === "hold") {
+      blockedUntil[note.lane] = Math.max(
+        blockedUntil[note.lane],
+        note.time + (note.duration ?? 0) + Math.max(0, clearance),
+      );
+    }
+    return true;
+  });
 }
 
 // 자동 생성 또는 에디터 입력 결과를 사람이 누를 수 있는 형태로 정리합니다.
@@ -89,5 +112,5 @@ export function postProcessNotes(
     recentTimes.push(note.time);
     previousLane = note.lane;
   }
-  return result;
+  return removePostHoldLaneConflicts(result);
 }

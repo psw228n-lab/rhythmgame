@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { applyJudgement, calculateAccuracy, calculateRank, createScoreState, judgeTiming } from "../src/game/JudgeManager";
-import { postProcessNotes, validateChart } from "../src/game/chartUtils";
+import { postProcessNotes, removePostHoldLaneConflicts, validateChart } from "../src/game/chartUtils";
 import type { ChartNote } from "../src/game/types";
 // 이 모듈은 Node 기반 자동 채보 생성기와 동일한 후처리 함수를 사용합니다.
 import { sanitizeGeneratedNotes } from "../scripts/chartAnalysis.mjs";
@@ -9,13 +9,13 @@ import { InputManager } from "../src/game/InputManager";
 
 describe("판정 시간 계산", () => {
   it("경계값을 설정대로 판정한다", () => {
-    expect(judgeTiming(60)).toBe("Perfect");
-    expect(judgeTiming(61)).toBe("Great");
-    expect(judgeTiming(-110)).toBe("Great");
-    expect(judgeTiming(111)).toBe("Good");
-    expect(judgeTiming(170)).toBe("Good");
-    expect(judgeTiming(171)).toBe("Bad");
-    expect(judgeTiming(230)).toBe("Bad");
+    expect(judgeTiming(85)).toBe("Perfect");
+    expect(judgeTiming(86)).toBe("Great");
+    expect(judgeTiming(-150)).toBe("Great");
+    expect(judgeTiming(151)).toBe("Good");
+    expect(judgeTiming(225)).toBe("Good");
+    expect(judgeTiming(226)).toBe("Bad");
+    expect(judgeTiming(320)).toBe("Bad");
   });
 });
 
@@ -50,6 +50,41 @@ describe("연타 입력 방지", () => {
     });
 
     expect(engine.press(1, 2)?.judgement).toBe("Bad");
+    expect(engine.score.counts.Bad).toBe(1);
+  });
+
+  it("누르지 않고 지나간 노트도 Bad로 기록한다", () => {
+    const engine = new GameEngine();
+    engine.load({
+      title: "Miss becomes Bad",
+      audio: "./audio/song.mp3",
+      offset: 0,
+      bpm: 120,
+      difficulty: "normal",
+      notes: [{ time: 2, lane: 1, type: "tap" }],
+    });
+
+    const events = engine.update(2.321, new Set());
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ judgement: "Bad", lane: 1 });
+    expect(events[0].deltaMs).toBeCloseTo(321);
+    expect(engine.score.counts.Bad).toBe(1);
+    expect(engine.score.combo).toBe(0);
+  });
+
+  it("롱노트를 끝까지 유지하지 못한 경우도 Bad로 기록한다", () => {
+    const engine = new GameEngine();
+    engine.load({
+      title: "Failed hold becomes Bad",
+      audio: "./audio/song.mp3",
+      offset: 0,
+      bpm: 120,
+      difficulty: "normal",
+      notes: [{ time: 2, lane: 0, type: "hold", duration: 1 }],
+    });
+
+    expect(engine.press(0, 2)?.judgement).toBe("Perfect");
+    expect(engine.update(3, new Set())).toEqual([{ judgement: "Bad", deltaMs: 0, lane: 0 }]);
     expect(engine.score.counts.Bad).toBe(1);
   });
 });
@@ -145,14 +180,28 @@ describe("채보 검증과 후처리", () => {
     expect(notes.every((note: ChartNote) => note.time < 10)).toBe(true);
   });
 
-  it("롱노트가 유지되는 동안 같은 레인의 겹치는 노트를 제거한다", () => {
+  it("롱노트가 유지되는 동안과 종료 직후 같은 레인의 노트를 제거한다", () => {
     const notes = sanitizeGeneratedNotes([
       { time: 2, lane: 0, type: "hold", duration: 1 },
       { time: 2.5, lane: 0, type: "tap" },
       { time: 3.2, lane: 0, type: "tap" },
+      { time: 3.4, lane: 0, type: "tap" },
     ], "hard", 10);
     expect(notes.some((note: ChartNote) => note.type === "hold")).toBe(true);
     expect(notes.some((note: ChartNote) => note.time === 2.5)).toBe(false);
-    expect(notes.some((note: ChartNote) => note.time === 3.2)).toBe(true);
+    expect(notes.some((note: ChartNote) => note.time === 3.2)).toBe(false);
+    expect(notes.some((note: ChartNote) => note.time === 3.4)).toBe(true);
+  });
+
+  it("불러온 채보에서도 롱노트 뒤 같은 레인만 320ms 동안 비운다", () => {
+    const notes = removePostHoldLaneConflicts([
+      { time: 2, lane: 1, type: "hold", duration: 1 },
+      { time: 3.1, lane: 1, type: "tap" },
+      { time: 3.1, lane: 2, type: "tap" },
+      { time: 3.33, lane: 1, type: "tap" },
+    ]);
+    expect(notes.some((note) => note.time === 3.1 && note.lane === 1)).toBe(false);
+    expect(notes.some((note) => note.time === 3.1 && note.lane === 2)).toBe(true);
+    expect(notes.some((note) => note.time === 3.33 && note.lane === 1)).toBe(true);
   });
 });
