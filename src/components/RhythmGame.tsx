@@ -42,6 +42,7 @@ export default function RhythmGame() {
   const [countdown, setCountdown] = useState(3);
   const [message, setMessage] = useState("채보와 음악을 준비하고 있습니다.");
   const [judgement, setJudgement] = useState<GameEvent | null>(null);
+  const [judgementDisplayId, setJudgementDisplayId] = useState(0);
   const [revision, setRevision] = useState(0);
   const [clock, setClock] = useState(0);
   const [leaderboardRefresh, setLeaderboardRefresh] = useState(0);
@@ -138,6 +139,7 @@ export default function RhythmGame() {
       ].slice(-12);
     }
     setJudgement(event);
+    setJudgementDisplayId((value) => value + 1);
     setRevision((value) => value + 1);
     window.setTimeout(() => {
       if (latestEventRef.current === event) setJudgement(null);
@@ -396,7 +398,12 @@ export default function RhythmGame() {
             <div className="stage-index"><span>STAGE 01</span><strong>{difficulty.toUpperCase()}</strong></div>
             <canvas ref={canvasRef} className="game-canvas" aria-label="4레인 리듬게임 플레이 화면" />
             <div className={`judgement-pop ${judgement ? judgement.judgement.toLowerCase() : ""}`} aria-live="polite">
-              {judgement && <><strong>{judgement.judgement}</strong><span>{judgement.deltaMs > 0 ? "+" : ""}{Math.round(judgement.deltaMs)}ms</span></>}
+              {judgement && (
+                <div className="judgement-pop-content" key={judgementDisplayId}>
+                  <strong>{judgement.judgement}</strong>
+                  <span>{judgement.deltaMs > 0 ? "+" : ""}{Math.round(judgement.deltaMs)}ms</span>
+                </div>
+              )}
             </div>
             {phase === "countdown" && (
               <div className="countdown" aria-live="assertive">
