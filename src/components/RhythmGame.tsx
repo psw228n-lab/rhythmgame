@@ -13,12 +13,16 @@ import { rankingService } from "../services/rankingService";
 import CalibrationPanel from "./CalibrationPanel";
 import LeaderboardPanel from "./LeaderboardPanel";
 import PlayerNameGate from "./PlayerNameGate";
-import ScoreSubmission from "./ScoreSubmission";
 import SongSelect from "./SongSelect";
 
 type Mode = "songs" | "play" | "ranking" | "calibration";
 type Phase = "idle" | "countdown" | "playing" | "paused" | "results";
 type JudgementDisplay = GameEvent & { displayId: number };
+type LeaderboardSubmissionState = {
+  status: "idle" | "submitting" | "done" | "error";
+  message: string;
+  rank?: number;
+};
 
 export default function RhythmGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -29,6 +33,7 @@ export default function RhythmGame() {
   const countdownTimerRef = useRef<number | null>(null);
   const judgementDisplayIdRef = useRef(0);
   const judgementTimersRef = useRef<Set<number>>(new Set());
+  const submissionAttemptRef = useRef(0);
   const hitEffectsRef = useRef<HitEffect[]>([]);
   const fadeStartedRef = useRef(false);
   const finishStartedRef = useRef(false);
@@ -47,6 +52,10 @@ export default function RhythmGame() {
   const [revision, setRevision] = useState(0);
   const [clock, setClock] = useState(0);
   const [leaderboardRefresh, setLeaderboardRefresh] = useState(0);
+  const [leaderboardSubmission, setLeaderboardSubmission] = useState<LeaderboardSubmissionState>({
+    status: "idle",
+    message: "",
+  });
   const [playerName, setPlayerName] = useState("");
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [playerReady, setPlayerReady] = useState(false);
@@ -164,9 +173,40 @@ export default function RhythmGame() {
       rank,
       playedAt: new Date().toISOString(),
     });
+    const submissionAttempt = ++submissionAttemptRef.current;
+    const submission = {
+      playerName,
+      songId: selectedSong.id,
+      difficulty: chart.difficulty,
+      score: engine.score.score,
+      accuracy,
+      maxCombo: engine.score.maxCombo,
+      counts: { ...engine.score.counts },
+    };
+    setLeaderboardSubmission({
+      status: "submitting",
+      message: "플레이 결과를 글로벌 리더보드에 자동 등록하고 있습니다.",
+    });
+    void rankingService.submitScore(submission)
+      .then(({ rank: globalRank }) => {
+        if (submissionAttemptRef.current !== submissionAttempt) return;
+        setLeaderboardSubmission({
+          status: "done",
+          rank: globalRank,
+          message: `${selectedSong.title} · ${chart.difficulty.toUpperCase()} 리더보드에 등록되었습니다.`,
+        });
+        setLeaderboardRefresh((value) => value + 1);
+      })
+      .catch((error) => {
+        if (submissionAttemptRef.current !== submissionAttempt) return;
+        setLeaderboardSubmission({
+          status: "error",
+          message: error instanceof Error ? error.message : "리더보드 자동 등록에 실패했습니다.",
+        });
+      });
     setPhase("results");
     setRevision((value) => value + 1);
-  }, [audio, chart, engine, selectedSong]);
+  }, [audio, chart, engine, playerName, selectedSong]);
 
   useEffect(() => {
     if (!audio) return;
@@ -285,6 +325,8 @@ export default function RhythmGame() {
       hitEffectsRef.current = [];
       fadeStartedRef.current = false;
       finishStartedRef.current = false;
+      submissionAttemptRef.current += 1;
+      setLeaderboardSubmission({ status: "idle", message: "" });
       setCountdown(3);
       setPhase("countdown");
       setJudgementDisplays([]);
@@ -485,7 +527,15 @@ export default function RhythmGame() {
               <ResultMetric label="GOOD" value={score.counts.Good.toString()} />
               <ResultMetric label="BAD" value={score.counts.Bad.toString()} />
             </div>
-            {selectedSong && <ScoreSubmission score={{ songId: selectedSong.id, difficulty, score: score.score, accuracy, maxCombo: score.maxCombo, counts: score.counts }} onSubmitted={() => setLeaderboardRefresh((value) => value + 1)} />}
+            <div className={`auto-ranking-panel ${leaderboardSubmission.status}`} role="status" aria-live="polite">
+              <span className="auto-ranking-label"><i />AUTO LEADERBOARD REGISTRATION</span>
+              {leaderboardSubmission.status === "done" && (
+                <strong>GLOBAL RANK #{leaderboardSubmission.rank?.toLocaleString()}</strong>
+              )}
+              {leaderboardSubmission.status === "submitting" && <b>UPLOADING SCORE...</b>}
+              {leaderboardSubmission.status === "error" && <b>REGISTRATION FAILED</b>}
+              <p>{leaderboardSubmission.message}</p>
+            </div>
             <div className="result-actions"><button className="button button-primary" onClick={startGame}>PLAY AGAIN</button><button className="button" onClick={() => setPhase("idle")}>CLOSE</button></div>
           </section>
         </div>

@@ -25,6 +25,11 @@ export interface ScoreSubmission {
   counts: Record<Judgement, number>;
 }
 
+export interface ScoreSubmissionResult {
+  entryId: number;
+  rank: number;
+}
+
 export interface LeaderboardEntry {
   id: number;
   playerName: string;
@@ -87,7 +92,7 @@ export const rankingService = {
     localStorage.setItem(PLAYER_KEY, JSON.stringify(sanitizePlayerName(name)));
   },
 
-  async submitScore(submission: ScoreSubmission) {
+  async submitScore(submission: ScoreSubmission): Promise<ScoreSubmissionResult> {
     if (!supabase) throw new Error("Supabase 연결 정보가 없습니다. 배포 환경변수를 설정해 주세요.");
     const playerName = sanitizePlayerName(submission.playerName);
     if (playerName.length < 2) throw new Error("닉네임은 2자 이상 입력해 주세요.");
@@ -105,9 +110,43 @@ export const rankingService = {
       miss_count: submission.counts.Bad,
       grade: calculateGrade(submission.accuracy),
     };
-    const { error } = await supabase.from(SCORE_TABLE).insert(payload);
+    const { data, error } = await supabase
+      .from(SCORE_TABLE)
+      .insert(payload)
+      .select("id")
+      .single();
     if (error) throw new Error(`랭킹 등록 실패: ${error.message}`);
+    const entryId = Number(data.id);
+    if (!Number.isFinite(entryId)) throw new Error("등록된 점수의 순번을 확인하지 못했습니다.");
+
+    const [higherScore, higherAccuracy, earlierTie] = await Promise.all([
+      supabase
+        .from(SCORE_TABLE)
+        .select("id", { count: "exact", head: true })
+        .eq("song_id", submission.songId)
+        .eq("difficulty", submission.difficulty)
+        .gt("score", payload.score),
+      supabase
+        .from(SCORE_TABLE)
+        .select("id", { count: "exact", head: true })
+        .eq("song_id", submission.songId)
+        .eq("difficulty", submission.difficulty)
+        .eq("score", payload.score)
+        .gt("accuracy", payload.accuracy),
+      supabase
+        .from(SCORE_TABLE)
+        .select("id", { count: "exact", head: true })
+        .eq("song_id", submission.songId)
+        .eq("difficulty", submission.difficulty)
+        .eq("score", payload.score)
+        .eq("accuracy", payload.accuracy)
+        .lt("id", entryId),
+    ]);
+    const rankError = higherScore.error ?? higherAccuracy.error ?? earlierTie.error;
+    if (rankError) throw new Error(`등수 계산 실패: ${rankError.message}`);
+    const rank = 1 + (higherScore.count ?? 0) + (higherAccuracy.count ?? 0) + (earlierTie.count ?? 0);
     this.savePlayerName(playerName);
+    return { entryId, rank };
   },
 
   async getLeaderboard(songId: string, difficulty: Difficulty, limit = 20): Promise<LeaderboardEntry[]> {
@@ -119,6 +158,7 @@ export const rankingService = {
       .eq("difficulty", difficulty)
       .order("score", { ascending: false })
       .order("accuracy", { ascending: false })
+      .order("id", { ascending: true })
       .limit(Math.max(1, Math.min(50, limit)));
     if (error) throw new Error(`랭킹 조회 실패: ${error.message}`);
     return (data ?? []).map((row) => ({
