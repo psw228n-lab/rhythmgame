@@ -5,7 +5,7 @@ import { AudioManager } from "../game/AudioManager";
 import { DEFAULT_SETTINGS, LANE_COLORS, LANE_LABELS } from "../game/config";
 import { GameEngine, type GameEvent } from "../game/GameEngine";
 import { InputManager } from "../game/InputManager";
-import { NoteManager } from "../game/NoteManager";
+import { NoteManager, type HitEffect } from "../game/NoteManager";
 import { validateChart } from "../game/chartUtils";
 import type { Chart, Difficulty, GameSettings } from "../game/types";
 import type { SongDefinition } from "../game/types";
@@ -27,6 +27,7 @@ export default function RhythmGame() {
   const rendererRef = useRef(new NoteManager());
   const countdownTimerRef = useRef<number | null>(null);
   const latestEventRef = useRef<GameEvent | null>(null);
+  const hitEffectsRef = useRef<HitEffect[]>([]);
 
   const [mode, setMode] = useState<Mode>("songs");
   const [phase, setPhase] = useState<Phase>("idle");
@@ -117,6 +118,13 @@ export default function RhythmGame() {
 
   const showEvent = useCallback((event: GameEvent) => {
     latestEventRef.current = event;
+    if (event.judgement !== "Miss") {
+      const startedAtMs = performance.now();
+      hitEffectsRef.current = [
+        ...hitEffectsRef.current.filter((effect) => startedAtMs - effect.startedAtMs < 380),
+        { lane: event.lane, judgement: event.judgement, startedAtMs },
+      ].slice(-12);
+    }
     setJudgement(event);
     setRevision((value) => value + 1);
     window.setTimeout(() => {
@@ -190,12 +198,15 @@ export default function RhythmGame() {
         if (events.length) showEvent(events[events.length - 1]);
       }
       if (canvas) {
+        hitEffectsRef.current = hitEffectsRef.current.filter((effect) => timestamp - effect.startedAtMs < 380);
         rendererRef.current.render(canvas, {
           audioTime: gameTime,
+          frameTimeMs: timestamp,
           noteSpeed: settings.noteSpeed,
           notes: engine.notes,
           pressedLanes: inputRef.current.heldLanes,
           combo: engine.score.combo,
+          hitEffects: hitEffectsRef.current,
         });
       }
       if (timestamp - lastUiUpdate > 80) {
@@ -237,6 +248,7 @@ export default function RhythmGame() {
       audio.seek(0);
       engine.load(chart);
       inputRef.current.clear();
+      hitEffectsRef.current = [];
       setCountdown(3);
       setPhase("countdown");
       setJudgement(null);

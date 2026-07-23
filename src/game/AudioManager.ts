@@ -4,6 +4,7 @@ export class AudioManager {
   private source: MediaElementAudioSourceNode | null = null;
   private gain: GainNode | null = null;
   private sfxGain: GainNode | null = null;
+  private noiseBuffer: AudioBuffer | null = null;
   private volume = 1;
 
   constructor() {
@@ -34,6 +35,7 @@ export class AudioManager {
       this.element.volume = 1;
       this.gain.gain.value = this.volume;
       this.sfxGain.gain.value = this.volume;
+      this.noiseBuffer = this.createNoiseBuffer(0.18);
       this.source.connect(this.gain).connect(this.context.destination);
       this.sfxGain.connect(this.context.destination);
     }
@@ -66,20 +68,88 @@ export class AudioManager {
   playHitSound(lane: number) {
     if (!this.context || !this.sfxGain || this.context.state !== "running") return;
     const now = this.context.currentTime;
+    if (lane === 0) {
+      this.playKick(now);
+    } else if (lane === 1) {
+      this.playSnare(now);
+    } else if (lane === 2) {
+      this.playHiHat(now);
+    } else {
+      this.playTom(now);
+    }
+  }
+
+  private playKick(now: number) {
+    if (!this.context || !this.sfxGain) return;
     const oscillator = this.context.createOscillator();
     const envelope = this.context.createGain();
-    const laneFrequency = [420, 500, 590, 700][lane] ?? 520;
-
-    oscillator.type = "triangle";
-    oscillator.frequency.setValueAtTime(laneFrequency, now);
-    oscillator.frequency.exponentialRampToValueAtTime(laneFrequency * 0.58, now + 0.055);
-    envelope.gain.setValueAtTime(0.0001, now);
-    envelope.gain.exponentialRampToValueAtTime(0.22, now + 0.004);
-    envelope.gain.exponentialRampToValueAtTime(0.0001, now + 0.075);
-
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(155, now);
+    oscillator.frequency.exponentialRampToValueAtTime(48, now + 0.14);
+    envelope.gain.setValueAtTime(0.72, now);
+    envelope.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
     oscillator.connect(envelope).connect(this.sfxGain);
     oscillator.start(now);
-    oscillator.stop(now + 0.08);
+    oscillator.stop(now + 0.17);
+  }
+
+  private playSnare(now: number) {
+    if (!this.context || !this.sfxGain) return;
+    this.playNoise(now, 0.14, 1200, 0.42);
+    const oscillator = this.context.createOscillator();
+    const envelope = this.context.createGain();
+    oscillator.type = "triangle";
+    oscillator.frequency.setValueAtTime(190, now);
+    oscillator.frequency.exponentialRampToValueAtTime(118, now + 0.1);
+    envelope.gain.setValueAtTime(0.28, now);
+    envelope.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+    oscillator.connect(envelope).connect(this.sfxGain);
+    oscillator.start(now);
+    oscillator.stop(now + 0.13);
+  }
+
+  private playHiHat(now: number) {
+    this.playNoise(now, 0.065, 6200, 0.34);
+  }
+
+  private playTom(now: number) {
+    if (!this.context || !this.sfxGain) return;
+    const oscillator = this.context.createOscillator();
+    const envelope = this.context.createGain();
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(235, now);
+    oscillator.frequency.exponentialRampToValueAtTime(92, now + 0.16);
+    envelope.gain.setValueAtTime(0.52, now);
+    envelope.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+    oscillator.connect(envelope).connect(this.sfxGain);
+    oscillator.start(now);
+    oscillator.stop(now + 0.19);
+  }
+
+  private playNoise(now: number, duration: number, highpassFrequency: number, level: number) {
+    if (!this.context || !this.sfxGain || !this.noiseBuffer) return;
+    const source = this.context.createBufferSource();
+    const filter = this.context.createBiquadFilter();
+    const envelope = this.context.createGain();
+    source.buffer = this.noiseBuffer;
+    filter.type = "highpass";
+    filter.frequency.value = highpassFrequency;
+    envelope.gain.setValueAtTime(level, now);
+    envelope.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    source.connect(filter).connect(envelope).connect(this.sfxGain);
+    source.start(now);
+    source.stop(now + duration);
+  }
+
+  private createNoiseBuffer(duration: number) {
+    if (!this.context) return null;
+    const length = Math.ceil(this.context.sampleRate * duration);
+    const buffer = this.context.createBuffer(1, length, this.context.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let index = 0; index < length; index += 1) {
+      data[index] = Math.random() * 2 - 1;
+    }
+    return buffer;
   }
 
   get currentTime() {
