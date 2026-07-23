@@ -105,7 +105,8 @@ export function estimateBpm(onsets) {
   for (let index = 1; index < histogram.length - 1; index += 1) {
     if (histogram[index] > histogram[best]) best = index;
   }
-  return Number((min + best / 2).toFixed(2));
+  const coarseBpm = min + best / 2;
+  return refineBpmToBeatGrid(onsets, coarseBpm);
 }
 
 export function estimateBeatPhase(onsets, bpm) {
@@ -119,7 +120,43 @@ export function estimateBeatPhase(onsets, bpm) {
   }
   let best = 0;
   for (let index = 1; index < scores.length; index += 1) if (scores[index] > scores[best]) best = index;
-  return (best / bins) * beat;
+  return (best / (bins - 1)) * beat;
+}
+
+export function refineBpmToBeatGrid(onsets, coarseBpm) {
+  const searchStart = Math.max(analysisConfig.bpmMin, coarseBpm - 8);
+  const searchEnd = Math.min(analysisConfig.bpmMax, coarseBpm + 8);
+  let bestBpm = coarseBpm;
+  let bestScore = -Infinity;
+
+  for (let bpm = searchStart; bpm <= searchEnd + 0.001; bpm += 0.25) {
+    const candidate = Number(bpm.toFixed(2));
+    const phase = estimateBeatPhase(onsets, candidate);
+    const score = beatGridAlignmentScore(onsets, candidate, phase);
+    if (score > bestScore) {
+      bestScore = score;
+      bestBpm = candidate;
+    }
+  }
+
+  return Number(bestBpm.toFixed(2));
+}
+
+function beatGridAlignmentScore(onsets, bpm, phase) {
+  const sixteenth = 60 / bpm / 4;
+  const tolerance = sixteenth * 0.14;
+  let alignedStrength = 0;
+  let totalStrength = 0;
+
+  for (const onset of onsets) {
+    const gridPosition = (onset.time - phase) / sixteenth;
+    const distance = Math.abs(gridPosition - Math.round(gridPosition)) * sixteenth;
+    const weight = Math.max(0, onset.strength);
+    alignedStrength += weight * Math.exp(-0.5 * (distance / tolerance) ** 2);
+    totalStrength += weight;
+  }
+
+  return totalStrength ? alignedStrength / totalStrength : 0;
 }
 
 export function createDifficultyNotes(analysis, difficulty) {

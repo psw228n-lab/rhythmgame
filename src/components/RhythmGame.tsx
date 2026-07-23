@@ -161,7 +161,7 @@ export default function RhythmGame() {
       if (lane === null) return;
       event.preventDefault();
       if (phase === "playing") {
-        audio.playHitSound(lane);
+        audio.playHitSound();
         const gameTime = audio.currentTime + settings.audioOffset / 1000 + (chart?.offset ?? 0);
         const result = engine.press(lane, gameTime);
         if (result) showEvent(result);

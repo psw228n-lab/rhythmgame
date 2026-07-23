@@ -65,65 +65,25 @@ export class AudioManager {
     }
   }
 
-  playHitSound(lane: number) {
+  playHitSound() {
     if (!this.context || !this.sfxGain || this.context.state !== "running") return;
     const now = this.context.currentTime;
-    if (lane === 0) {
-      this.playKick(now);
-    } else if (lane === 1) {
-      this.playSnare(now);
-    } else if (lane === 2) {
-      this.playHiHat(now);
-    } else {
-      this.playTom(now);
-    }
-  }
-
-  private playKick(now: number) {
-    if (!this.context || !this.sfxGain) return;
-    const oscillator = this.context.createOscillator();
-    const envelope = this.context.createGain();
-    oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(155, now);
-    oscillator.frequency.exponentialRampToValueAtTime(48, now + 0.14);
-    envelope.gain.setValueAtTime(0.72, now);
-    envelope.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
-    oscillator.connect(envelope).connect(this.sfxGain);
-    oscillator.start(now);
-    oscillator.stop(now + 0.17);
+    this.playSnare(now);
   }
 
   private playSnare(now: number) {
     if (!this.context || !this.sfxGain) return;
-    this.playNoise(now, 0.14, 1200, 0.42);
+    this.playNoise(now, 0.1, 1700, 0.38);
     const oscillator = this.context.createOscillator();
     const envelope = this.context.createGain();
     oscillator.type = "triangle";
-    oscillator.frequency.setValueAtTime(190, now);
-    oscillator.frequency.exponentialRampToValueAtTime(118, now + 0.1);
-    envelope.gain.setValueAtTime(0.28, now);
-    envelope.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+    oscillator.frequency.setValueAtTime(180, now);
+    oscillator.frequency.exponentialRampToValueAtTime(112, now + 0.08);
+    envelope.gain.setValueAtTime(0.3, now);
+    envelope.gain.exponentialRampToValueAtTime(0.0001, now + 0.1);
     oscillator.connect(envelope).connect(this.sfxGain);
     oscillator.start(now);
-    oscillator.stop(now + 0.13);
-  }
-
-  private playHiHat(now: number) {
-    this.playNoise(now, 0.065, 6200, 0.34);
-  }
-
-  private playTom(now: number) {
-    if (!this.context || !this.sfxGain) return;
-    const oscillator = this.context.createOscillator();
-    const envelope = this.context.createGain();
-    oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(235, now);
-    oscillator.frequency.exponentialRampToValueAtTime(92, now + 0.16);
-    envelope.gain.setValueAtTime(0.52, now);
-    envelope.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
-    oscillator.connect(envelope).connect(this.sfxGain);
-    oscillator.start(now);
-    oscillator.stop(now + 0.19);
+    oscillator.stop(now + 0.11);
   }
 
   private playNoise(now: number, duration: number, highpassFrequency: number, level: number) {
