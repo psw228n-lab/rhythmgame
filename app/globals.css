@@ -152,8 +152,9 @@ button { color: inherit; }
 .stage-index { position: absolute; z-index: 4; top: 14px; left: 18px; right: 18px; display: flex; justify-content: space-between; color: var(--muted); font: 700 8px var(--font-mono); letter-spacing: .17em; pointer-events: none; }
 .stage-index strong { color: #d8dfff; }
 
-.judgement-pop { position: absolute; z-index: 5; top: 54%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; text-transform: uppercase; }
-.judgement-pop strong { display: block; font: italic 900 48px var(--font-display); letter-spacing: .05em; animation: judgement-in .46s ease-out both; }
+.judgement-layer { position: absolute; z-index: 5; inset: 0; overflow: hidden; pointer-events: none; }
+.judgement-pop { position: absolute; top: 54%; width: 25%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; text-transform: uppercase; }
+.judgement-pop strong { display: block; font: italic 900 clamp(25px, 3.1vw, 42px) var(--font-display); letter-spacing: .03em; animation: judgement-in .56s ease-out both; }
 .judgement-pop span { display: block; margin-top: 3px; color: #fff; font: 700 10px var(--font-mono); letter-spacing: .13em; }
 .judgement-pop.perfect strong { color: #fff; text-shadow: 0 0 14px #fff, 0 0 30px var(--violet); }
 .judgement-pop.great strong { color: var(--mint); text-shadow: 0 0 24px var(--mint); }

@@ -72,6 +72,27 @@ describe("연타 입력 방지", () => {
     expect(engine.score.combo).toBe(0);
   });
 
+  it("같은 순간 놓친 모든 노트를 각각 Bad 이벤트로 반환한다", () => {
+    const engine = new GameEngine();
+    engine.load({
+      title: "Every miss becomes Bad",
+      audio: "./audio/song.mp3",
+      offset: 0,
+      bpm: 120,
+      difficulty: "normal",
+      notes: [
+        { time: 2, lane: 0, type: "tap" },
+        { time: 2, lane: 2, type: "tap" },
+      ],
+    });
+
+    const events = engine.update(2.321, new Set());
+    expect(events).toHaveLength(2);
+    expect(events.map((event) => event.judgement)).toEqual(["Bad", "Bad"]);
+    expect(events.map((event) => event.lane)).toEqual([0, 2]);
+    expect(engine.score.counts.Bad).toBe(2);
+  });
+
   it("롱노트를 끝까지 유지하지 못한 경우도 Bad로 기록한다", () => {
     const engine = new GameEngine();
     engine.load({

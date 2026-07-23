@@ -18,6 +18,7 @@ import SongSelect from "./SongSelect";
 
 type Mode = "songs" | "play" | "ranking" | "calibration";
 type Phase = "idle" | "countdown" | "playing" | "paused" | "results";
+type JudgementDisplay = GameEvent & { displayId: number };
 
 export default function RhythmGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -26,7 +27,8 @@ export default function RhythmGame() {
   const inputRef = useRef(new InputManager());
   const rendererRef = useRef(new NoteManager());
   const countdownTimerRef = useRef<number | null>(null);
-  const latestEventRef = useRef<GameEvent | null>(null);
+  const judgementDisplayIdRef = useRef(0);
+  const judgementTimersRef = useRef<Set<number>>(new Set());
   const hitEffectsRef = useRef<HitEffect[]>([]);
   const fadeStartedRef = useRef(false);
   const finishStartedRef = useRef(false);
@@ -41,8 +43,7 @@ export default function RhythmGame() {
   const [loaded, setLoaded] = useState(false);
   const [countdown, setCountdown] = useState(3);
   const [message, setMessage] = useState("채보와 음악을 준비하고 있습니다.");
-  const [judgement, setJudgement] = useState<GameEvent | null>(null);
-  const [judgementDisplayId, setJudgementDisplayId] = useState(0);
+  const [judgementDisplays, setJudgementDisplays] = useState<JudgementDisplay[]>([]);
   const [revision, setRevision] = useState(0);
   const [clock, setClock] = useState(0);
   const [leaderboardRefresh, setLeaderboardRefresh] = useState(0);
@@ -130,7 +131,6 @@ export default function RhythmGame() {
   }, [audio, settings]);
 
   const showEvent = useCallback((event: GameEvent) => {
-    latestEventRef.current = event;
     if (event.judgement !== "Bad") {
       const startedAtMs = performance.now();
       hitEffectsRef.current = [
@@ -138,12 +138,14 @@ export default function RhythmGame() {
         { lane: event.lane, judgement: event.judgement, startedAtMs },
       ].slice(-12);
     }
-    setJudgement(event);
-    setJudgementDisplayId((value) => value + 1);
+    const displayId = ++judgementDisplayIdRef.current;
+    setJudgementDisplays((current) => [...current, { ...event, displayId }].slice(-16));
     setRevision((value) => value + 1);
-    window.setTimeout(() => {
-      if (latestEventRef.current === event) setJudgement(null);
-    }, 460);
+    const timer = window.setTimeout(() => {
+      setJudgementDisplays((current) => current.filter((item) => item.displayId !== displayId));
+      judgementTimersRef.current.delete(timer);
+    }, 560);
+    judgementTimersRef.current.add(timer);
   }, []);
 
   const finishGame = useCallback(() => {
@@ -221,7 +223,7 @@ export default function RhythmGame() {
           finishGame();
         } else {
           const events = engine.update(gameTime, inputRef.current.heldLanes);
-          if (events.length) showEvent(events[events.length - 1]);
+          events.forEach(showEvent);
         }
       }
       if (canvas) {
@@ -261,6 +263,8 @@ export default function RhythmGame() {
 
   useEffect(() => () => {
     if (countdownTimerRef.current !== null) window.clearInterval(countdownTimerRef.current);
+    judgementTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    judgementTimersRef.current.clear();
   }, []);
 
   const startGame = async () => {
@@ -281,7 +285,7 @@ export default function RhythmGame() {
       finishStartedRef.current = false;
       setCountdown(3);
       setPhase("countdown");
-      setJudgement(null);
+      setJudgementDisplays([]);
       let value = 3;
       countdownTimerRef.current = window.setInterval(async () => {
         value -= 1;
@@ -397,13 +401,17 @@ export default function RhythmGame() {
           <section className="playfield-panel">
             <div className="stage-index"><span>STAGE 01</span><strong>{difficulty.toUpperCase()}</strong></div>
             <canvas ref={canvasRef} className="game-canvas" aria-label="4레인 리듬게임 플레이 화면" />
-            <div className={`judgement-pop ${judgement ? judgement.judgement.toLowerCase() : ""}`} aria-live="polite">
-              {judgement && (
-                <div className="judgement-pop-content" key={judgementDisplayId}>
-                  <strong>{judgement.judgement}</strong>
-                  <span>{judgement.deltaMs > 0 ? "+" : ""}{Math.round(judgement.deltaMs)}ms</span>
+            <div className="judgement-layer" aria-live="polite" aria-atomic="false">
+              {judgementDisplays.map((display) => (
+                <div
+                  className={`judgement-pop ${display.judgement.toLowerCase()}`}
+                  key={display.displayId}
+                  style={{ left: `${(display.lane + 0.5) * 25}%` }}
+                >
+                  <strong>{display.judgement}</strong>
+                  <span>{display.deltaMs > 0 ? "+" : ""}{Math.round(display.deltaMs)}ms</span>
                 </div>
-              )}
+              ))}
             </div>
             {phase === "countdown" && (
               <div className="countdown" aria-live="assertive">
