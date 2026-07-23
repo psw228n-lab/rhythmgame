@@ -218,7 +218,8 @@
     {
       "time": 12.5614,
       "lane": 1,
-      "type": "tap"
+      "type": "hold",
+      "duration": 0.667
     },
     {
       "time": 12.7281,
@@ -538,7 +539,8 @@
     {
       "time": 25.8947,
       "lane": 1,
-      "type": "tap"
+      "type": "hold",
+      "duration": 0.667
     },
     {
       "time": 26.0614,
@@ -868,16 +870,12 @@
     {
       "time": 39.2281,
       "lane": 2,
-      "type": "tap"
+      "type": "hold",
+      "duration": 0.667
     },
     {
       "time": 39.3947,
       "lane": 0,
-      "type": "tap"
-    },
-    {
-      "time": 39.5614,
-      "lane": 2,
       "type": "tap"
     },
     {
@@ -1228,7 +1226,8 @@
     {
       "time": 52.5614,
       "lane": 2,
-      "type": "tap"
+      "type": "hold",
+      "duration": 0.667
     },
     {
       "time": 52.8947,
@@ -1563,12 +1562,8 @@
     {
       "time": 65.8947,
       "lane": 0,
-      "type": "tap"
-    },
-    {
-      "time": 66.2281,
-      "lane": 0,
-      "type": "tap"
+      "type": "hold",
+      "duration": 0.667
     },
     {
       "time": 66.5614,
@@ -1928,7 +1923,8 @@
     {
       "time": 79.2281,
       "lane": 0,
-      "type": "tap"
+      "type": "hold",
+      "duration": 0.667
     },
     {
       "time": 79.3947,
@@ -2268,12 +2264,8 @@
     {
       "time": 92.5614,
       "lane": 1,
-      "type": "tap"
-    },
-    {
-      "time": 92.8947,
-      "lane": 1,
-      "type": "tap"
+      "type": "hold",
+      "duration": 0.667
     },
     {
       "time": 93.0614,
@@ -2588,7 +2580,8 @@
     {
       "time": 105.8947,
       "lane": 2,
-      "type": "tap"
+      "type": "hold",
+      "duration": 0.667
     },
     {
       "time": 106.2281,
@@ -2888,7 +2881,8 @@
     {
       "time": 119.2281,
       "lane": 3,
-      "type": "tap"
+      "type": "hold",
+      "duration": 0.667
     },
     {
       "time": 119.5614,
@@ -3268,7 +3262,8 @@
     {
       "time": 132.5614,
       "lane": 2,
-      "type": "tap"
+      "type": "hold",
+      "duration": 0.667
     },
     {
       "time": 132.8947,
@@ -3638,7 +3633,8 @@
     {
       "time": 145.8947,
       "lane": 2,
-      "type": "tap"
+      "type": "hold",
+      "duration": 0.667
     },
     {
       "time": 146.2281,
@@ -3983,7 +3979,8 @@
     {
       "time": 159.2281,
       "lane": 3,
-      "type": "tap"
+      "type": "hold",
+      "duration": 0.667
     },
     {
       "time": 159.3947,
@@ -4328,7 +4325,8 @@
     {
       "time": 172.5614,
       "lane": 0,
-      "type": "tap"
+      "type": "hold",
+      "duration": 0.667
     },
     {
       "time": 172.7281,
@@ -4693,7 +4691,8 @@
     {
       "time": 185.8947,
       "lane": 2,
-      "type": "tap"
+      "type": "hold",
+      "duration": 0.667
     },
     {
       "time": 186.0614,
@@ -4703,11 +4702,6 @@
     {
       "time": 186.2281,
       "lane": 0,
-      "type": "tap"
-    },
-    {
-      "time": 186.3947,
-      "lane": 2,
       "type": "tap"
     },
     {
@@ -5038,7 +5032,8 @@
     {
       "time": 199.2281,
       "lane": 1,
-      "type": "tap"
+      "type": "hold",
+      "duration": 0.667
     },
     {
       "time": 199.5614,
@@ -5219,6 +5214,6 @@
   "analysis": {
     "duration": 212.4858,
     "firstSound": 0.0348,
-    "generatedAt": "2026-07-23T06:09:11.959Z"
+    "generatedAt": "2026-07-23T12:15:54.080Z"
   }
 }

@@ -5,7 +5,7 @@ export const createScoreState = (): ScoreState => ({
   score: 0,
   combo: 0,
   maxCombo: 0,
-  counts: { Perfect: 0, Great: 0, Good: 0, Miss: 0 },
+  counts: { Perfect: 0, Great: 0, Good: 0, Bad: 0 },
 });
 
 // 입력과 노트의 시간차를 밀리초로 받아 판정 이름을 돌려줍니다.
@@ -14,11 +14,11 @@ export function judgeTiming(deltaMs: number): Judgement {
   if (distance <= JUDGEMENT_WINDOWS.Perfect) return "Perfect";
   if (distance <= JUDGEMENT_WINDOWS.Great) return "Great";
   if (distance <= JUDGEMENT_WINDOWS.Good) return "Good";
-  return "Miss";
+  return "Bad";
 }
 
 export function applyJudgement(state: ScoreState, judgement: Judgement): ScoreState {
-  const combo = judgement === "Miss" ? 0 : state.combo + 1;
+  const combo = judgement === "Bad" ? 0 : state.combo + 1;
   return {
     score: state.score + SCORE_VALUES[judgement],
     combo,

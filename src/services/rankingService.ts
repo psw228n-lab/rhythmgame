@@ -101,7 +101,8 @@ export const rankingService = {
       perfect_count: submission.counts.Perfect,
       great_count: submission.counts.Great,
       good_count: submission.counts.Good,
-      miss_count: submission.counts.Miss,
+      // 기존 Supabase 스키마의 miss_count 열을 Bad 횟수 저장용으로 재사용합니다.
+      miss_count: submission.counts.Bad,
       grade: calculateGrade(submission.accuracy),
     };
     const { error } = await supabase.from(SCORE_TABLE).insert(payload);

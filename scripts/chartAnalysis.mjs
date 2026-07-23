@@ -195,13 +195,14 @@ export function createDifficultyNotes(analysis, difficulty) {
     const quiet = normalizedEnergy < 0.14;
     if (quiet && !isMainBeat) continue;
 
-    const nextStrongGap = nextOnsetGap(analysis.onsets, time);
-    const shouldHold = isMainBeat && bar % (difficulty === "easy" ? 4 : 7) === 3 && nextStrongGap > beat * 1.2;
+    const holdCycle = difficulty === "easy" ? 4 : difficulty === "normal" ? 4 : 5;
+    const holdBeats = difficulty === "easy" ? 1.5 : difficulty === "normal" ? 1.25 : 1;
+    const shouldHold = localSlot === 0 && bar % holdCycle === holdCycle - 1 && normalizedEnergy >= 0.1;
     candidates.push({
       time: Number(time.toFixed(4)),
       lane,
       type: shouldHold ? "hold" : "tap",
-      ...(shouldHold ? { duration: Number(Math.min(beat * 1.5, nextStrongGap - 0.1).toFixed(3)) } : {}),
+      ...(shouldHold ? { duration: Number((beat * holdBeats).toFixed(3)) } : {}),
     });
 
     const climax = energy >= analysis.highEnergy;
@@ -238,6 +239,13 @@ export function sanitizeGeneratedNotes(notes, difficulty, duration) {
       note.lane = (note.lane + 1 + output.length % 2) % 4;
       laneRun = 1;
     }
+    if (
+      output.some((item) =>
+        item.type === "hold" &&
+        item.lane === note.lane &&
+        item.time + (item.duration ?? 0) > note.time + 0.03
+      )
+    ) continue;
     if (note.type === "hold") note.duration = Number(Math.max(0.28, Math.min(note.duration ?? 0.5, duration - note.time - 0.1)).toFixed(3));
     output.push(note);
     recent.push(note.time);
@@ -259,9 +267,4 @@ function nearestOnset(onsets, time, tolerance) {
     if (!best || Math.abs(onset.time - time) < Math.abs(best.time - time)) best = onset;
   }
   return best;
-}
-
-function nextOnsetGap(onsets, time) {
-  const next = onsets.find((onset) => onset.time > time + 0.08);
-  return next ? next.time - time : 4;
 }

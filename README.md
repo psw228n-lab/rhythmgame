@@ -28,10 +28,10 @@ npm run dev
 
 판정 범위는 `src/game/config.ts`에서 바꿀 수 있습니다.
 
-- Perfect: ±45ms / 1,000점
-- Great: ±90ms / 700점
-- Good: ±140ms / 300점
-- Miss: 140ms 초과 / 0점, 콤보 초기화
+- Perfect: ±60ms / 1,000점
+- Great: ±110ms / 700점
+- Good: ±170ms / 300점
+- Bad: ±230ms 또는 빈 입력 / 0점, 콤보 초기화
 
 ## 실제 오디오 분석과 채보 재생성
 

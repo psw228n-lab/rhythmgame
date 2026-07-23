@@ -30,9 +30,10 @@ export class GameEngine {
     let bestDistance = Number.POSITIVE_INFINITY;
     for (let index = this.nextMissIndex; index < this.notes.length; index += 1) {
       const note = this.notes[index];
-      if (note.time > audioTime + JUDGEMENT_WINDOWS.Good / 1000) break;
+      if (note.time > audioTime + JUDGEMENT_WINDOWS.Bad / 1000) break;
       if (note.status !== "pending" || note.lane !== lane) continue;
       const distance = Math.abs(note.time - audioTime);
+      if (distance > JUDGEMENT_WINDOWS.Bad / 1000) continue;
       if (distance < bestDistance) {
         candidate = note;
         bestDistance = distance;
@@ -42,7 +43,6 @@ export class GameEngine {
 
     const deltaMs = (audioTime - candidate.time) * 1000;
     const judgement = judgeTiming(deltaMs);
-    if (judgement === "Miss") return this.applyStrayPress(lane);
 
     if (candidate.type === "hold") {
       candidate.status = "holding";
@@ -59,8 +59,8 @@ export class GameEngine {
     const note = this.notes.find((item) => item.status === "holding" && item.lane === lane);
     if (!note) return null;
     const endTime = note.time + (note.duration ?? 0);
-    const heldLongEnough = audioTime >= endTime - JUDGEMENT_WINDOWS.Good / 1000;
-    const judgement = heldLongEnough ? note.pendingJudgement ?? "Good" : "Miss";
+    const heldLongEnough = audioTime >= endTime - JUDGEMENT_WINDOWS.Bad / 1000;
+    const judgement = heldLongEnough ? note.pendingJudgement ?? "Good" : "Bad";
     note.status = heldLongEnough ? "hit" : "miss";
     this.score = applyJudgement(this.score, judgement);
     this.advanceMissCursor();
@@ -82,10 +82,10 @@ export class GameEngine {
         continue;
       }
       if (note.status !== "pending") continue;
-      if (audioTime <= note.time + JUDGEMENT_WINDOWS.Good / 1000) break;
+      if (audioTime <= note.time + JUDGEMENT_WINDOWS.Bad / 1000) break;
       note.status = "miss";
-      this.score = applyJudgement(this.score, "Miss");
-      events.push({ judgement: "Miss", deltaMs: (audioTime - note.time) * 1000, lane: note.lane });
+      this.score = applyJudgement(this.score, "Bad");
+      events.push({ judgement: "Bad", deltaMs: (audioTime - note.time) * 1000, lane: note.lane });
     }
     this.advanceMissCursor();
     return events;
@@ -109,7 +109,7 @@ export class GameEngine {
   }
 
   private applyStrayPress(lane: number): GameEvent {
-    this.score = applyJudgement(this.score, "Miss");
-    return { judgement: "Miss", deltaMs: 0, lane };
+    this.score = applyJudgement(this.score, "Bad");
+    return { judgement: "Bad", deltaMs: 0, lane };
   }
 }

@@ -1,6 +1,6 @@
 export type Difficulty = "easy" | "normal" | "hard";
 export type NoteType = "tap" | "hold";
-export type Judgement = "Perfect" | "Great" | "Good" | "Miss";
+export type Judgement = "Perfect" | "Great" | "Good" | "Bad";
 
 export interface ChartNote {
   time: number;

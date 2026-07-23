@@ -96,11 +96,19 @@ export default function RhythmGame() {
         if (!validateChart(data)) throw new Error("채보 JSON 형식이 올바르지 않습니다.");
         await audio.load(resolveAssetPath(data.audio));
         if (cancelled) return;
+        const gameEndTime = selectedSong.fadeOutAt + selectedSong.fadeOutDuration;
+        const playableChart: Chart = {
+          ...data,
+          notes: data.notes.filter((note) =>
+            note.time < gameEndTime - 0.08 &&
+            (note.type !== "hold" || note.time + (note.duration ?? 0) < gameEndTime - 0.04)
+          ),
+        };
         audio.setVolume(settings.volume);
-        engine.load(data);
-        setChart(data);
+        engine.load(playableChart);
+        setChart(playableChart);
         setLoaded(true);
-        setMessage(`${Math.round(data.bpm)} BPM · ${data.notes.length.toLocaleString()} NOTES · 준비 완료`);
+        setMessage(`${Math.round(playableChart.bpm)} BPM · ${playableChart.notes.length.toLocaleString()} NOTES · 준비 완료`);
         setRevision((value) => value + 1);
       } catch (error) {
         if (!cancelled) setMessage(error instanceof Error ? error.message : "게임 데이터를 불러오지 못했습니다.");
@@ -120,7 +128,7 @@ export default function RhythmGame() {
 
   const showEvent = useCallback((event: GameEvent) => {
     latestEventRef.current = event;
-    if (event.judgement !== "Miss") {
+    if (event.judgement !== "Bad") {
       const startedAtMs = performance.now();
       hitEffectsRef.current = [
         ...hitEffectsRef.current.filter((effect) => startedAtMs - effect.startedAtMs < 380),
@@ -376,7 +384,7 @@ export default function RhythmGame() {
               <HudMetric label="ACCURACY" value={`${accuracy.toFixed(2)}%`} />
             </div>
             <div className="distribution-card">
-              {(["Perfect", "Great", "Good", "Miss"] as const).map((key) => (
+              {(["Perfect", "Great", "Good", "Bad"] as const).map((key) => (
                 <div key={key}><span>{key.toUpperCase()}</span><strong>{score.counts[key].toString().padStart(3, "0")}</strong></div>
               ))}
             </div>
@@ -439,7 +447,7 @@ export default function RhythmGame() {
               <ResultMetric label="PERFECT" value={score.counts.Perfect.toString()} />
               <ResultMetric label="GREAT" value={score.counts.Great.toString()} />
               <ResultMetric label="GOOD" value={score.counts.Good.toString()} />
-              <ResultMetric label="MISS" value={score.counts.Miss.toString()} />
+              <ResultMetric label="BAD" value={score.counts.Bad.toString()} />
             </div>
             {selectedSong && <ScoreSubmission score={{ songId: selectedSong.id, difficulty, score: score.score, accuracy, maxCombo: score.maxCombo, counts: score.counts }} onSubmitted={() => setLeaderboardRefresh((value) => value + 1)} />}
             <div className="result-actions"><button className="button button-primary" onClick={startGame}>PLAY AGAIN</button><button className="button" onClick={() => setPhase("idle")}>CLOSE</button></div>

@@ -130,7 +130,7 @@ export class NoteManager {
     frameTimeMs: number,
   ) {
     const elapsed = frameTimeMs - effect.startedAtMs;
-    if (elapsed < 0 || elapsed > 380 || effect.judgement === "Miss") return;
+    if (elapsed < 0 || elapsed > 380 || effect.judgement === "Bad") return;
     const progress = elapsed / 380;
     const eased = 1 - (1 - progress) ** 3;
     const color = LANE_COLORS[effect.lane];

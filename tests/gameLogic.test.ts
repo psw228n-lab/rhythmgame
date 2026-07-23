@@ -9,15 +9,18 @@ import { InputManager } from "../src/game/InputManager";
 
 describe("판정 시간 계산", () => {
   it("경계값을 설정대로 판정한다", () => {
-    expect(judgeTiming(45)).toBe("Perfect");
-    expect(judgeTiming(-90)).toBe("Great");
-    expect(judgeTiming(140)).toBe("Good");
-    expect(judgeTiming(141)).toBe("Miss");
+    expect(judgeTiming(60)).toBe("Perfect");
+    expect(judgeTiming(61)).toBe("Great");
+    expect(judgeTiming(-110)).toBe("Great");
+    expect(judgeTiming(111)).toBe("Good");
+    expect(judgeTiming(170)).toBe("Good");
+    expect(judgeTiming(171)).toBe("Bad");
+    expect(judgeTiming(230)).toBe("Bad");
   });
 });
 
 describe("연타 입력 방지", () => {
-  it("노트가 없는 위치의 입력을 Miss로 처리해 콤보를 끊는다", () => {
+  it("노트가 없는 위치의 입력을 Bad로 처리해 콤보를 끊는다", () => {
     const engine = new GameEngine();
     engine.load({
       title: "Anti spam",
@@ -30,12 +33,12 @@ describe("연타 입력 방지", () => {
 
     expect(engine.press(0, 2)?.judgement).toBe("Perfect");
     expect(engine.score.combo).toBe(1);
-    expect(engine.press(0, 2.05)?.judgement).toBe("Miss");
+    expect(engine.press(0, 2.05)?.judgement).toBe("Bad");
     expect(engine.score.combo).toBe(0);
-    expect(engine.score.counts).toMatchObject({ Perfect: 1, Miss: 1 });
+    expect(engine.score.counts).toMatchObject({ Perfect: 1, Bad: 1 });
   });
 
-  it("판정 범위보다 너무 이른 입력도 Miss로 처리한다", () => {
+  it("판정 범위보다 너무 이른 입력도 Bad로 처리한다", () => {
     const engine = new GameEngine();
     engine.load({
       title: "Early spam",
@@ -46,8 +49,8 @@ describe("연타 입력 방지", () => {
       notes: [{ time: 3, lane: 1, type: "tap" }],
     });
 
-    expect(engine.press(1, 2)?.judgement).toBe("Miss");
-    expect(engine.score.counts.Miss).toBe(1);
+    expect(engine.press(1, 2)?.judgement).toBe("Bad");
+    expect(engine.score.counts.Bad).toBe(1);
   });
 });
 
@@ -82,13 +85,13 @@ describe("빠른 동일 레인 입력", () => {
 });
 
 describe("점수, 콤보, 정확도", () => {
-  it("Miss에서 콤보를 초기화한다", () => {
+  it("Bad에서 콤보를 초기화한다", () => {
     let state = createScoreState();
     state = applyJudgement(state, "Perfect");
     state = applyJudgement(state, "Great");
     expect(state.score).toBe(1700);
     expect(state.combo).toBe(2);
-    state = applyJudgement(state, "Miss");
+    state = applyJudgement(state, "Bad");
     expect(state.combo).toBe(0);
     expect(state.maxCombo).toBe(2);
   });
@@ -140,5 +143,16 @@ describe("채보 검증과 후처리", () => {
     ], "easy", 10);
     expect(notes.length).toBeGreaterThan(0);
     expect(notes.every((note: ChartNote) => note.time < 10)).toBe(true);
+  });
+
+  it("롱노트가 유지되는 동안 같은 레인의 겹치는 노트를 제거한다", () => {
+    const notes = sanitizeGeneratedNotes([
+      { time: 2, lane: 0, type: "hold", duration: 1 },
+      { time: 2.5, lane: 0, type: "tap" },
+      { time: 3.2, lane: 0, type: "tap" },
+    ], "hard", 10);
+    expect(notes.some((note: ChartNote) => note.type === "hold")).toBe(true);
+    expect(notes.some((note: ChartNote) => note.time === 2.5)).toBe(false);
+    expect(notes.some((note: ChartNote) => note.time === 3.2)).toBe(true);
   });
 });
