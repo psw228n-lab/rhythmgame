@@ -137,6 +137,7 @@ export default function SongSelect({ songs, selectedId, onSelect }: Props) {
           aria-label="드래그 가능한 앨범 선택"
           onPointerDown={(event) => {
             if (event.button !== 0) return;
+            if ((event.target as HTMLElement).closest(".song-card-action")) return;
             playPreview(activeIndex);
             dragRef.current = { pointerId: event.pointerId, startX: event.clientX, moved: false };
           }}
@@ -210,7 +211,18 @@ export default function SongSelect({ songs, selectedId, onSelect }: Props) {
                     <span><b>{formatDuration(song.fadeOutAt + song.fadeOutDuration)}</b> PLAY TIME</span>
                     <span><b>3</b> DIFFICULTIES</span>
                   </div>
-                  <span className="button button-primary">{center ? "CLICK TO PLAY" : "BRING TO CENTER"}</span>
+                  <button
+                    className="button button-primary song-card-action"
+                    type="button"
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      if (center) onSelect(song);
+                      else activate(index);
+                    }}
+                  >
+                    {center ? "CLICK TO PLAY" : "BRING TO CENTER"}
+                  </button>
                 </div>
               </article>
             );
