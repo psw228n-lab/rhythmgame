@@ -7,6 +7,9 @@
     "duration": 246.503,
     "accent": "#ff3d81",
     "cover": "./covers/i-really-want-to-stay-at-your-house.png",
+    "previewAudio": "./audio/song.mp3",
+    "previewStart": 123,
+    "previewLength": 18,
     "fadeOutAt": 94,
     "fadeOutDuration": 2.5,
     "charts": {
@@ -23,6 +26,9 @@
     "duration": 212.486,
     "accent": "#45d9ff",
     "cover": "./covers/faded.png",
+    "previewAudio": "./audio/faded.mp3",
+    "previewStart": 106,
+    "previewLength": 18,
     "fadeOutAt": 98,
     "fadeOutDuration": 2.5,
     "charts": {

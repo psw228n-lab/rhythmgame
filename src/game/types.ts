@@ -31,6 +31,9 @@ export interface SongDefinition {
   duration: number;
   accent: string;
   cover: string;
+  previewAudio: string;
+  previewStart: number;
+  previewLength: number;
   fadeOutAt: number;
   fadeOutDuration: number;
   charts: Record<Difficulty, string>;
