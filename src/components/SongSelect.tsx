@@ -139,12 +139,14 @@ export default function SongSelect({ songs, selectedId, onSelect }: Props) {
             if (event.button !== 0) return;
             playPreview(activeIndex);
             dragRef.current = { pointerId: event.pointerId, startX: event.clientX, moved: false };
-            event.currentTarget.setPointerCapture(event.pointerId);
           }}
           onPointerMove={(event) => {
             if (dragRef.current.pointerId !== event.pointerId) return;
             const distance = event.clientX - dragRef.current.startX;
-            dragRef.current.moved ||= Math.abs(distance) > 10;
+            if (!dragRef.current.moved && Math.abs(distance) > 10) {
+              dragRef.current.moved = true;
+              event.currentTarget.setPointerCapture(event.pointerId);
+            }
             setDragX(Math.max(-180, Math.min(180, distance)));
           }}
           onPointerUp={(event) => {
