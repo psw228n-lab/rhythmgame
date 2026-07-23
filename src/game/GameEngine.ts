@@ -38,11 +38,11 @@ export class GameEngine {
         bestDistance = distance;
       }
     }
-    if (!candidate) return null;
+    if (!candidate) return this.applyStrayPress(lane);
 
     const deltaMs = (audioTime - candidate.time) * 1000;
     const judgement = judgeTiming(deltaMs);
-    if (judgement === "Miss") return null;
+    if (judgement === "Miss") return this.applyStrayPress(lane);
 
     if (candidate.type === "hold") {
       candidate.status = "holding";
@@ -106,5 +106,10 @@ export class GameEngine {
     ) {
       this.nextMissIndex += 1;
     }
+  }
+
+  private applyStrayPress(lane: number): GameEvent {
+    this.score = applyJudgement(this.score, "Miss");
+    return { judgement: "Miss", deltaMs: 0, lane };
   }
 }

@@ -228,7 +228,8 @@ button { color: inherit; }
 .song-card:hover, .song-card.selected { border-color: color-mix(in srgb, var(--song-accent, var(--pink)), transparent 38%); transform: translateY(-5px); box-shadow: 0 30px 74px rgba(0,0,0,.46), 0 0 34px color-mix(in srgb, var(--song-accent, var(--pink)), transparent 85%); }
 .song-card.selected::after { content: "SELECTED"; position: absolute; top: 18px; right: 18px; color: var(--song-accent); font: 700 8px var(--font-mono); letter-spacing: .16em; }
 .song-art { position: absolute; inset: 0; display: grid; place-items: center; background: radial-gradient(circle at 50% 34%, color-mix(in srgb, var(--song-accent, var(--violet)), transparent 55%), transparent 48%), linear-gradient(135deg, rgba(255,255,255,.035), rgba(0,0,0,.42)); overflow: hidden; }
-.song-art::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 47px, color-mix(in srgb, var(--song-accent, var(--violet)), transparent 87%) 47px 48px), repeating-linear-gradient(0deg, transparent 0 47px, rgba(255,255,255,.035) 47px 48px); transform: perspective(380px) rotateX(58deg) scale(1.5); transform-origin: center 80%; }
+.song-art::before { content: ""; position: absolute; z-index: 1; inset: 0; background: linear-gradient(180deg, rgba(5,7,13,.08), transparent 48%, rgba(5,7,13,.58)); pointer-events: none; }
+.song-art img { width: 100%; height: 100%; object-fit: cover; }
 .song-art > span { position: absolute; top: 18px; left: 20px; z-index: 2; color: rgba(255,255,255,.48); font: 700 9px var(--font-mono); }
 .song-art strong { z-index: 2; transform: translateY(-34px); font: 900 118px var(--font-display); color: #fff; text-shadow: 0 0 38px var(--song-accent, var(--violet)); }
 .song-art i { position: absolute; left: 14%; right: 14%; top: 54%; height: 2px; background: var(--song-accent, var(--pink)); box-shadow: 0 0 24px var(--song-accent, var(--pink)); }
@@ -239,6 +240,7 @@ button { color: inherit; }
 .song-specs span { padding: 9px 8px; background: #0a0d17; color: var(--muted); font: 700 6px var(--font-mono); letter-spacing: .08em; }.song-specs b { display: block; margin-bottom: 4px; color: #fff; font-size: 11px; }
 .song-card-copy .button { width: 100%; min-width: 0; padding: 0 14px; }
 .song-card.coming-soon { opacity: .46; pointer-events: none; }
+.song-card.coming-soon .song-art::before { background: repeating-linear-gradient(90deg, transparent 0 47px, color-mix(in srgb, var(--song-accent, var(--violet)), transparent 87%) 47px 48px), repeating-linear-gradient(0deg, transparent 0 47px, rgba(255,255,255,.035) 47px 48px); }
 .song-card.coming-soon .song-art strong { transform: translateY(-28px); font-size: 78px; }.song-card.coming-soon .song-card-copy { padding: 80px 24px 24px; }.song-card.coming-soon .song-card-copy h2 { font-size: 32px; }
 
 .leaderboard-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 26px; }

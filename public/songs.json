@@ -3,13 +3,28 @@
     "id": "i-really-want-to-stay-at-your-house",
     "title": "I Really Want to Stay at Your House",
     "artist": "Rosa Walton",
-    "bpm": 123.5,
+    "bpm": 125,
     "duration": 246.503,
     "accent": "#ff3d81",
+    "cover": "./covers/i-really-want-to-stay-at-your-house.png",
     "charts": {
       "easy": "./charts/easy.json",
       "normal": "./charts/normal.json",
       "hard": "./charts/hard.json"
+    }
+  },
+  {
+    "id": "alan-walker-faded",
+    "title": "Faded",
+    "artist": "Alan Walker",
+    "bpm": 90,
+    "duration": 212.486,
+    "accent": "#45d9ff",
+    "cover": "./covers/faded.png",
+    "charts": {
+      "easy": "./charts/faded/easy.json",
+      "normal": "./charts/faded/normal.json",
+      "hard": "./charts/faded/hard.json"
     }
   }
 ]

@@ -8,8 +8,10 @@ const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(scriptDirectory, "..");
 const audioRelativePath = process.env.CHART_AUDIO_PATH || "public/audio/song.mp3";
 const audioPath = resolve(projectRoot, audioRelativePath);
-const outputDirectory = resolve(projectRoot, "public/charts");
-const title = "I Really Want to Stay at Your House";
+const outputRelativePath = process.env.CHART_OUTPUT_DIR || "public/charts";
+const outputDirectory = resolve(projectRoot, outputRelativePath);
+const title = process.env.CHART_TITLE || "I Really Want to Stay at Your House";
+const audioUrl = process.env.CHART_AUDIO_URL || "./audio/song.mp3";
 
 console.log(`[chart] 실제 오디오 디코딩 시작: ${audioRelativePath}`);
 const input = new Uint8Array(await readFile(audioPath));
@@ -31,7 +33,7 @@ for (const difficulty of ["easy", "normal", "hard"]) {
   if (!notes.length) throw new Error(`${difficulty} 채보가 비어 있습니다. 분석 설정을 확인해 주세요.`);
   const chart = {
     title,
-    audio: "./audio/song.mp3",
+    audio: audioUrl,
     offset: 0,
     bpm: analysis.bpm,
     difficulty,

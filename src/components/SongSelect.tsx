@@ -24,9 +24,8 @@ export default function SongSelect({ songs, selectedId, onSelect }: Props) {
             style={{ "--song-accent": song.accent } as React.CSSProperties}
           >
             <div className="song-art" aria-hidden="true">
+              <img src={song.cover} alt="" />
               <span>{String(index + 1).padStart(2, "0")}</span>
-              <strong>A</strong>
-              <i />
             </div>
             <div className="song-card-copy">
               <span className="eyebrow">AVAILABLE TRACK</span>

@@ -4,6 +4,7 @@ import { postProcessNotes, validateChart } from "../src/game/chartUtils";
 import type { ChartNote } from "../src/game/types";
 // 이 모듈은 Node 기반 자동 채보 생성기와 동일한 후처리 함수를 사용합니다.
 import { sanitizeGeneratedNotes } from "../scripts/chartAnalysis.mjs";
+import { GameEngine } from "../src/game/GameEngine";
 
 describe("판정 시간 계산", () => {
   it("경계값을 설정대로 판정한다", () => {
@@ -11,6 +12,41 @@ describe("판정 시간 계산", () => {
     expect(judgeTiming(-90)).toBe("Great");
     expect(judgeTiming(140)).toBe("Good");
     expect(judgeTiming(141)).toBe("Miss");
+  });
+});
+
+describe("연타 입력 방지", () => {
+  it("노트가 없는 위치의 입력을 Miss로 처리해 콤보를 끊는다", () => {
+    const engine = new GameEngine();
+    engine.load({
+      title: "Anti spam",
+      audio: "./audio/song.mp3",
+      offset: 0,
+      bpm: 120,
+      difficulty: "normal",
+      notes: [{ time: 2, lane: 0, type: "tap" }],
+    });
+
+    expect(engine.press(0, 2)?.judgement).toBe("Perfect");
+    expect(engine.score.combo).toBe(1);
+    expect(engine.press(0, 2.05)?.judgement).toBe("Miss");
+    expect(engine.score.combo).toBe(0);
+    expect(engine.score.counts).toMatchObject({ Perfect: 1, Miss: 1 });
+  });
+
+  it("판정 범위보다 너무 이른 입력도 Miss로 처리한다", () => {
+    const engine = new GameEngine();
+    engine.load({
+      title: "Early spam",
+      audio: "./audio/song.mp3",
+      offset: 0,
+      bpm: 120,
+      difficulty: "easy",
+      notes: [{ time: 3, lane: 1, type: "tap" }],
+    });
+
+    expect(engine.press(1, 2)?.judgement).toBe("Miss");
+    expect(engine.score.counts.Miss).toBe(1);
   });
 });
 

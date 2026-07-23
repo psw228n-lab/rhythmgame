@@ -30,6 +30,7 @@ export interface SongDefinition {
   bpm: number;
   duration: number;
   accent: string;
+  cover: string;
   charts: Record<Difficulty, string>;
 }
 
