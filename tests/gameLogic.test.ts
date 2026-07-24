@@ -38,6 +38,21 @@ describe("연타 입력 방지", () => {
     expect(engine.score.counts).toMatchObject({ Perfect: 1, Bad: 1 });
   });
 
+  it("실제 노트를 누른 입력과 빈 레인 입력을 구분한다", () => {
+    const engine = new GameEngine();
+    engine.load({
+      title: "Matched note marker",
+      audio: "./audio/song.mp3",
+      offset: 0,
+      bpm: 120,
+      difficulty: "normal",
+      notes: [{ time: 2, lane: 0, type: "tap" }],
+    });
+
+    expect(engine.press(3, 2)?.matchedNote).not.toBe(true);
+    expect(engine.press(0, 2)?.matchedNote).toBe(true);
+  });
+
   it("판정 범위보다 너무 이른 입력도 Bad로 처리한다", () => {
     const engine = new GameEngine();
     engine.load({

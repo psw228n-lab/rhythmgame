@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AudioManager } from "../game/AudioManager";
-import { DEFAULT_SETTINGS, LANE_COLORS, LANE_LABELS } from "../game/config";
+import { DEFAULT_SETTINGS, LANE_COLORS, LANE_LABELS, SCORE_VALUES } from "../game/config";
 import { GameEngine, type GameEvent } from "../game/GameEngine";
 import { InputManager } from "../game/InputManager";
 import { NoteManager, type HitEffect } from "../game/NoteManager";
@@ -17,7 +17,7 @@ import SongSelect from "./SongSelect";
 
 type Mode = "songs" | "play" | "ranking" | "calibration";
 type Phase = "idle" | "countdown" | "playing" | "paused" | "results";
-type JudgementDisplay = GameEvent & { displayId: number };
+type JudgementDisplay = GameEvent & { displayId: number; gainedScore: number };
 type LeaderboardSubmissionState = {
   status: "idle" | "submitting" | "done" | "error";
   message: string;
@@ -34,6 +34,7 @@ export default function RhythmGame() {
   const judgementDisplayIdRef = useRef(0);
   const judgementTimersRef = useRef<Set<number>>(new Set());
   const submissionAttemptRef = useRef(0);
+  const judgementEnabledRef = useRef(false);
   const hitEffectsRef = useRef<HitEffect[]>([]);
   const fadeStartedRef = useRef(false);
   const finishStartedRef = useRef(false);
@@ -147,9 +148,12 @@ export default function RhythmGame() {
         { lane: event.lane, judgement: event.judgement, startedAtMs },
       ].slice(-12);
     }
-    if (event.displayJudgement !== false) {
+    if (event.displayJudgement !== false && judgementEnabledRef.current) {
       const displayId = ++judgementDisplayIdRef.current;
-      setJudgementDisplays((current) => [...current, { ...event, displayId }].slice(-16));
+      setJudgementDisplays((current) => [
+        ...current,
+        { ...event, displayId, gainedScore: SCORE_VALUES[event.judgement] },
+      ].slice(-16));
       const timer = window.setTimeout(() => {
         setJudgementDisplays((current) => current.filter((item) => item.displayId !== displayId));
         judgementTimersRef.current.delete(timer);
@@ -225,6 +229,7 @@ export default function RhythmGame() {
         audio.playHitSound();
         const gameTime = audio.currentTime + settings.audioOffset / 1000 + (chart?.offset ?? 0);
         const result = engine.press(lane, gameTime);
+        if (result?.matchedNote) judgementEnabledRef.current = true;
         if (result) showEvent(result);
       }
     };
@@ -323,6 +328,7 @@ export default function RhythmGame() {
       engine.load(chart);
       inputRef.current.clear();
       hitEffectsRef.current = [];
+      judgementEnabledRef.current = false;
       fadeStartedRef.current = false;
       finishStartedRef.current = false;
       submissionAttemptRef.current += 1;
@@ -452,6 +458,7 @@ export default function RhythmGame() {
                   key={display.displayId}
                 >
                   <strong>{display.judgement}</strong>
+                  <small>+{display.gainedScore.toString().padStart(3, "0")}</small>
                 </div>
               ))}
             </div>
@@ -475,26 +482,43 @@ export default function RhythmGame() {
                 </div>
               </div>
             )}
-            {phase === "idle" && <div className="idle-prompt"><span>PRESS START TO CONNECT</span><div className="key-row">{LANE_LABELS.map((key, lane) => <kbd key={key} style={{ "--lane-color": LANE_COLORS[lane] } as React.CSSProperties}>{key}</kbd>)}</div></div>}
+            {phase === "idle" && (
+              <div className="ready-overlay">
+                <button className="ready-button" type="button" onClick={startGame} disabled={!loaded}>
+                  <span>{loaded ? "SYSTEM READY" : "LOADING TRACK"}</span>
+                  <strong>준비완료</strong>
+                </button>
+              </div>
+            )}
             {phase === "paused" && <div className="pause-overlay"><span>PLAYBACK SUSPENDED</span><strong>PAUSED</strong></div>}
           </section>
 
           <aside className="hud-column hud-right">
             <div className="control-heading"><span className="eyebrow">LIVE CONTROL</span><h2>Game setup</h2></div>
-            <label className="control-field">
+            <div className="control-field">
               <span><b>DIFFICULTY</b><em>{difficulty.toUpperCase()}</em></span>
-              <select value={difficulty} disabled={phase === "playing" || phase === "countdown"} onChange={(event) => setDifficulty(event.target.value as Difficulty)}>
-                <option value="easy">EASY</option><option value="normal">NORMAL</option><option value="hard">HARD</option>
-              </select>
-            </label>
+              <div className="difficulty-toggle" role="group" aria-label="난이도 선택">
+                {(["easy", "normal", "hard"] as Difficulty[]).map((value) => (
+                  <button
+                    className={difficulty === value ? "active" : ""}
+                    type="button"
+                    key={value}
+                    disabled={phase === "playing" || phase === "countdown"}
+                    aria-pressed={difficulty === value}
+                    onClick={() => setDifficulty(value)}
+                  >
+                    {value.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
             <RangeControl label="NOTE SPEED" value={settings.noteSpeed} min={0.65} max={1.8} step={0.05} suffix="×" onChange={(noteSpeed) => setSettings((value) => ({ ...value, noteSpeed }))} />
             <RangeControl label="VOLUME" value={settings.volume} min={0} max={1} step={0.01} display={`${Math.round(settings.volume * 100)}%`} onChange={(volume) => setSettings((value) => ({ ...value, volume }))} />
             <RangeControl label="SYNC OFFSET" value={settings.audioOffset} min={-300} max={300} step={5} suffix="ms" display={`${settings.audioOffset > 0 ? "+" : ""}${settings.audioOffset}ms`} onChange={(audioOffset) => setSettings((value) => ({ ...value, audioOffset }))} />
 
             <div className="primary-actions">
-              <button className="button button-primary" onClick={startGame} disabled={!loaded || phase === "countdown"}>{phase === "results" ? "RETRY RUN" : "START RUN"}</button>
               <button className="button" onClick={togglePause} disabled={!(["playing", "paused"] as Phase[]).includes(phase)}>{phase === "paused" ? "RESUME" : "PAUSE"}</button>
-              <button className="icon-button" aria-label="재시작" onClick={startGame} disabled={!loaded}>↻</button>
+              <button className="icon-button" aria-label="재시작" onClick={startGame} disabled={!loaded || !(["playing", "paused"] as Phase[]).includes(phase)}>↻</button>
             </div>
             <div className="status-message" role="status"><span />{message}</div>
           </aside>

@@ -13,6 +13,7 @@ export interface GameEvent {
   deltaMs: number;
   lane: number;
   displayJudgement?: boolean;
+  matchedNote?: boolean;
 }
 
 export class GameEngine {
@@ -48,12 +49,12 @@ export class GameEngine {
     if (candidate.type === "hold") {
       candidate.status = "holding";
       candidate.pendingJudgement = judgement;
-      return { judgement, deltaMs, lane, displayJudgement: false };
+      return { judgement, deltaMs, lane, displayJudgement: false, matchedNote: true };
     }
     candidate.status = "hit";
     this.score = applyJudgement(this.score, judgement);
     this.advanceMissCursor();
-    return { judgement, deltaMs, lane };
+    return { judgement, deltaMs, lane, matchedNote: true };
   }
 
   release(lane: number, audioTime: number): GameEvent | null {
