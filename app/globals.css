@@ -425,13 +425,15 @@ button { color: inherit; }
 
 .leaderboard-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 26px; }
 .cloud-indicator { color: var(--muted); font: 700 9px var(--font-mono); letter-spacing: .09em; }.cloud-indicator span { display: inline-block; width: 7px; height: 7px; margin-right: 8px; border-radius: 50%; background: #586071; }.cloud-indicator.online span { background: var(--mint); box-shadow: 0 0 12px var(--mint); }
-.leaderboard-filters { display: grid; grid-template-columns: 1fr 220px; gap: 12px; margin-bottom: 14px; }
+.leaderboard-filters { display: grid; grid-template-columns: 1fr 220px 150px; gap: 12px; align-items: end; margin-bottom: 14px; }
 .leaderboard-filters label { display: grid; gap: 8px; color: var(--muted); font: 700 8px var(--font-mono); letter-spacing: .13em; }
 .leaderboard-filters select { min-height: 44px; padding: 0 13px; border: 1px solid var(--line); background: rgba(255,255,255,.035); color: #fff; outline: 0; font: 700 10px var(--font-mono); }
+.leaderboard-mine-button { min-height: 44px; padding: 0 14px; }
 .leaderboard-table { border: 1px solid var(--line); background: rgba(5,7,13,.72); }
 .leaderboard-row { min-height: 58px; display: grid; grid-template-columns: 64px 1fr 150px 100px 90px 70px; align-items: center; padding: 0 18px; border-bottom: 1px solid var(--line); color: #aab2c2; font: 600 11px var(--font-mono); }
 .leaderboard-row:last-child { border-bottom: 0; }.leaderboard-row.header { min-height: 38px; color: #5f687b; font-size: 8px; letter-spacing: .12em; }.leaderboard-row strong { color: #fff; letter-spacing: .04em; }.leaderboard-row b { color: #fff; font-size: 15px; }.leaderboard-row em { color: var(--pink); font: italic 900 24px var(--font-display); }
 .leaderboard-row.podium { background: linear-gradient(90deg, rgba(255,61,129,.07), transparent 50%); }.leaderboard-row.podium-1 { border-left: 2px solid var(--amber); }.leaderboard-row.podium-2 { border-left: 2px solid #a9b3c9; }.leaderboard-row.podium-3 { border-left: 2px solid #b8734f; }
+.leaderboard-row.is-mine { background: linear-gradient(90deg, rgba(33,230,193,.11), rgba(123,97,255,.04)); box-shadow: inset 2px 0 0 var(--mint); }
 .leaderboard-empty { min-height: 220px; display: grid; place-items: center; padding: 24px; color: var(--muted); text-align: center; font: 600 11px/1.7 var(--font-mono); }.leaderboard-status { color: var(--muted); font: 600 9px var(--font-mono); }
 
 .editor-shell { max-width: 1280px; margin: 0 auto; min-height: calc(100vh - 72px); padding: 42px 36px 60px; position: relative; z-index: 10; }

@@ -5,6 +5,9 @@ const RECORD_KEY = "afterglow.records.v2";
 const SETTINGS_KEY = "afterglow.settings.v1";
 const PLAYER_KEY = "afterglow.player-name.v1";
 const SCORE_TABLE = "rhythm_scores";
+const PLAYER_TABLE = "rhythm_players";
+const BEST_SCORE_VIEW = "rhythm_leaderboard_best";
+const PAGE_SIZE = 1000;
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
@@ -32,6 +35,7 @@ export interface ScoreSubmissionResult {
 
 export interface LeaderboardEntry {
   id: number;
+  position: number;
   playerName: string;
   songId: string;
   difficulty: Difficulty;
@@ -40,6 +44,18 @@ export interface LeaderboardEntry {
   maxCombo: number;
   rank: string;
   createdAt: string;
+}
+
+interface ScoreRow {
+  id: number | string;
+  player_name: string;
+  song_id: string;
+  difficulty: string;
+  score: number | string;
+  accuracy: number | string;
+  max_combo: number | string;
+  grade: string;
+  created_at: string;
 }
 
 type LocalRecords = Record<string, SavedRecord>;
@@ -57,8 +73,126 @@ function recordKey(songId: string, difficulty: Difficulty) {
   return `${songId}:${difficulty}`;
 }
 
-function sanitizePlayerName(value: string) {
-  return value.replace(/[<>\n\r\t]/g, "").trim().slice(0, 16);
+export function sanitizePlayerName(value: string) {
+  return value.replace(/[<>\n\r\t]/g, "").replace(/\s+/g, " ").trim().slice(0, 16);
+}
+
+export function normalizePlayerName(value: string) {
+  return sanitizePlayerName(value).toLocaleLowerCase("ko-KR");
+}
+
+function validatePlayerName(value: string) {
+  const playerName = sanitizePlayerName(value);
+  if (playerName.length < 2) throw new Error("닉네임은 2자 이상 입력해 주세요.");
+  return playerName;
+}
+
+function mapScoreRow(row: ScoreRow): LeaderboardEntry {
+  return {
+    id: Number(row.id),
+    position: 0,
+    playerName: String(row.player_name),
+    songId: String(row.song_id),
+    difficulty: row.difficulty as Difficulty,
+    score: Number(row.score),
+    accuracy: Number(row.accuracy),
+    maxCombo: Number(row.max_combo),
+    rank: String(row.grade),
+    createdAt: String(row.created_at),
+  };
+}
+
+function compareEntries(left: LeaderboardEntry, right: LeaderboardEntry) {
+  return right.score - left.score || right.accuracy - left.accuracy || left.id - right.id;
+}
+
+export function keepPlayerBestScores(entries: LeaderboardEntry[]) {
+  const bestByPlayer = new Map<string, LeaderboardEntry>();
+  for (const entry of entries) {
+    const key = normalizePlayerName(entry.playerName);
+    const previous = bestByPlayer.get(key);
+    if (!previous || compareEntries(entry, previous) < 0) bestByPlayer.set(key, entry);
+  }
+  return [...bestByPlayer.values()].sort(compareEntries);
+}
+
+function isMissingRelation(error: { code?: string; message?: string }) {
+  return error.code === "42P01" || error.code === "PGRST205" || /does not exist|schema cache/i.test(error.message ?? "");
+}
+
+async function loadAllScoreRows(songId: string, difficulty: Difficulty) {
+  if (!supabase) return [];
+  const rows: ScoreRow[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from(SCORE_TABLE)
+      .select("id,player_name,song_id,difficulty,score,accuracy,max_combo,grade,created_at")
+      .eq("song_id", songId)
+      .eq("difficulty", difficulty)
+      .order("id", { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw new Error(`랭킹 조회 실패: ${error.message}`);
+    const page = (data ?? []) as ScoreRow[];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) break;
+  }
+  return rows;
+}
+
+async function loadBestEntries(songId: string, difficulty: Difficulty) {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from(BEST_SCORE_VIEW)
+    .select("id,player_name,song_id,difficulty,score,accuracy,max_combo,grade,created_at")
+    .eq("song_id", songId)
+    .eq("difficulty", difficulty)
+    .order("score", { ascending: false })
+    .order("accuracy", { ascending: false })
+    .order("id", { ascending: true })
+    .limit(PAGE_SIZE);
+
+  let entries: LeaderboardEntry[];
+  if (error) {
+    if (!isMissingRelation(error)) throw new Error(`랭킹 조회 실패: ${error.message}`);
+    entries = (await loadAllScoreRows(songId, difficulty)).map(mapScoreRow);
+  } else {
+    entries = ((data ?? []) as ScoreRow[]).map(mapScoreRow);
+  }
+
+  return keepPlayerBestScores(entries).map((entry, index) => ({ ...entry, position: index + 1 }));
+}
+
+async function playerNameExistsInScores(playerName: string) {
+  if (!supabase) return false;
+  const target = normalizePlayerName(playerName);
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from(SCORE_TABLE)
+      .select("player_name")
+      .order("id", { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw new Error(`닉네임 확인 실패: ${error.message}`);
+    const page = (data ?? []) as Array<{ player_name: string }>;
+    if (page.some((row) => normalizePlayerName(row.player_name) === target)) return true;
+    if (page.length < PAGE_SIZE) return false;
+  }
+}
+
+async function reservePlayerName(playerName: string, allowExisting: boolean) {
+  if (!supabase) return;
+  const { error } = await supabase.from(PLAYER_TABLE).insert({ player_name: playerName });
+  if (!error) return;
+  if (error.code === "23505") {
+    if (allowExisting) return;
+    throw new Error("이미 사용 중인 닉네임입니다. 다른 이름을 입력해 주세요.");
+  }
+  if (isMissingRelation(error)) {
+    if (!allowExisting && await playerNameExistsInScores(playerName)) {
+      throw new Error("이미 사용 중인 닉네임입니다. 다른 이름을 입력해 주세요.");
+    }
+    return;
+  }
+  throw new Error(`닉네임 등록 실패: ${error.message}`);
 }
 
 export const rankingService = {
@@ -92,10 +226,22 @@ export const rankingService = {
     localStorage.setItem(PLAYER_KEY, JSON.stringify(sanitizePlayerName(name)));
   },
 
+  async claimPlayerName(name: string) {
+    const playerName = validatePlayerName(name);
+    const currentName = this.getPlayerName();
+    if (currentName && normalizePlayerName(currentName) === normalizePlayerName(playerName)) {
+      this.savePlayerName(playerName);
+      return playerName;
+    }
+    await reservePlayerName(playerName, false);
+    this.savePlayerName(playerName);
+    return playerName;
+  },
+
   async submitScore(submission: ScoreSubmission): Promise<ScoreSubmissionResult> {
     if (!supabase) throw new Error("Supabase 연결 정보가 없습니다. 배포 환경변수를 설정해 주세요.");
-    const playerName = sanitizePlayerName(submission.playerName);
-    if (playerName.length < 2) throw new Error("닉네임은 2자 이상 입력해 주세요.");
+    const playerName = validatePlayerName(submission.playerName);
+    await reservePlayerName(playerName, true);
     const payload = {
       player_name: playerName,
       song_id: submission.songId,
@@ -119,59 +265,20 @@ export const rankingService = {
     const entryId = Number(data.id);
     if (!Number.isFinite(entryId)) throw new Error("등록된 점수의 순번을 확인하지 못했습니다.");
 
-    const [higherScore, higherAccuracy, earlierTie] = await Promise.all([
-      supabase
-        .from(SCORE_TABLE)
-        .select("id", { count: "exact", head: true })
-        .eq("song_id", submission.songId)
-        .eq("difficulty", submission.difficulty)
-        .gt("score", payload.score),
-      supabase
-        .from(SCORE_TABLE)
-        .select("id", { count: "exact", head: true })
-        .eq("song_id", submission.songId)
-        .eq("difficulty", submission.difficulty)
-        .eq("score", payload.score)
-        .gt("accuracy", payload.accuracy),
-      supabase
-        .from(SCORE_TABLE)
-        .select("id", { count: "exact", head: true })
-        .eq("song_id", submission.songId)
-        .eq("difficulty", submission.difficulty)
-        .eq("score", payload.score)
-        .eq("accuracy", payload.accuracy)
-        .lt("id", entryId),
-    ]);
-    const rankError = higherScore.error ?? higherAccuracy.error ?? earlierTie.error;
-    if (rankError) throw new Error(`등수 계산 실패: ${rankError.message}`);
-    const rank = 1 + (higherScore.count ?? 0) + (higherAccuracy.count ?? 0) + (earlierTie.count ?? 0);
+    const playerEntry = (await loadBestEntries(submission.songId, submission.difficulty))
+      .find((entry) => normalizePlayerName(entry.playerName) === normalizePlayerName(playerName));
+    const rank = playerEntry?.position ?? 1;
     this.savePlayerName(playerName);
     return { entryId, rank };
   },
 
-  async getLeaderboard(songId: string, difficulty: Difficulty, limit = 20): Promise<LeaderboardEntry[]> {
-    if (!supabase) return [];
-    const { data, error } = await supabase
-      .from(SCORE_TABLE)
-      .select("id,player_name,song_id,difficulty,score,accuracy,max_combo,grade,created_at")
-      .eq("song_id", songId)
-      .eq("difficulty", difficulty)
-      .order("score", { ascending: false })
-      .order("accuracy", { ascending: false })
-      .order("id", { ascending: true })
-      .limit(Math.max(1, Math.min(50, limit)));
-    if (error) throw new Error(`랭킹 조회 실패: ${error.message}`);
-    return (data ?? []).map((row) => ({
-      id: Number(row.id),
-      playerName: String(row.player_name),
-      songId: String(row.song_id),
-      difficulty: row.difficulty as Difficulty,
-      score: Number(row.score),
-      accuracy: Number(row.accuracy),
-      maxCombo: Number(row.max_combo),
-      rank: String(row.grade),
-      createdAt: String(row.created_at),
-    }));
+  async getLeaderboard(songId: string, difficulty: Difficulty, limit = 20, playerName?: string): Promise<LeaderboardEntry[]> {
+    const entries = await loadBestEntries(songId, difficulty);
+    if (playerName) {
+      const target = normalizePlayerName(playerName);
+      return entries.filter((entry) => normalizePlayerName(entry.playerName) === target);
+    }
+    return entries.slice(0, Math.max(1, Math.min(50, limit)));
   },
 
   getSettings(fallback: GameSettings) {

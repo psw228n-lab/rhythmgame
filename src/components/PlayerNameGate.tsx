@@ -11,16 +11,20 @@ interface Props {
 export default function PlayerNameGate({ initialName, onSaved }: Props) {
   const [name, setName] = useState(initialName);
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const submit = (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    rankingService.savePlayerName(name);
-    const savedName = rankingService.getPlayerName();
-    if (savedName.length < 2) {
-      setError("플레이어 이름을 2자 이상 입력해 주세요.");
-      return;
+    setSubmitting(true);
+    setError("");
+    try {
+      const savedName = await rankingService.claimPlayerName(name);
+      onSaved(savedName);
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : "닉네임을 등록하지 못했습니다.");
+    } finally {
+      setSubmitting(false);
     }
-    onSaved(savedName);
   };
 
   return (
@@ -29,7 +33,7 @@ export default function PlayerNameGate({ initialName, onSaved }: Props) {
         <span className="eyebrow">PLAYER REGISTRATION</span>
         <div className="player-gate-mark" aria-hidden="true"><span>A</span></div>
         <h1 id="player-gate-title">이름을 입력하세요</h1>
-        <p>플레이 결과와 글로벌 리더보드에 표시할 이름입니다. 이 브라우저에 저장되며 언제든 상단에서 변경할 수 있습니다.</p>
+        <p>리더보드에서 사용할 고유 닉네임입니다. 같은 브라우저에서는 다음 방문에도 자동으로 불러옵니다.</p>
         <label>
           <span>PLAYER NAME</span>
           <input
@@ -39,6 +43,7 @@ export default function PlayerNameGate({ initialName, onSaved }: Props) {
             maxLength={16}
             autoComplete="nickname"
             placeholder="2–16 CHARACTERS"
+            disabled={submitting}
             onChange={(event) => {
               setName(event.target.value);
               setError("");
@@ -46,8 +51,8 @@ export default function PlayerNameGate({ initialName, onSaved }: Props) {
           />
         </label>
         {error && <div className="player-gate-error" role="alert">{error}</div>}
-        <button className="button button-primary" type="submit" disabled={name.trim().length < 2}>
-          ENTER THE ARCHIVE
+        <button className="button button-primary" type="submit" disabled={submitting || name.trim().length < 2}>
+          {submitting ? "CHECKING NAME..." : "ENTER THE ARCHIVE"}
         </button>
       </form>
     </div>
