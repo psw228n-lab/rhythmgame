@@ -36,5 +36,24 @@
       "normal": "./charts/faded/normal.json",
       "hard": "./charts/faded/hard.json"
     }
+  },
+  {
+    "id": "rescene-pretty-girl",
+    "title": "Pretty Girl",
+    "artist": "RESCENE",
+    "bpm": 134,
+    "duration": 210.0245,
+    "accent": "#ff7dcb",
+    "cover": "./covers/pretty-girl.jpg",
+    "previewAudio": "./audio/pretty-girl.mp3",
+    "previewStart": 105,
+    "previewLength": 18,
+    "fadeOutAt": 103,
+    "fadeOutDuration": 2.5,
+    "charts": {
+      "easy": "./charts/pretty-girl/easy.json",
+      "normal": "./charts/pretty-girl/normal.json",
+      "hard": "./charts/pretty-girl/hard.json"
+    }
   }
 ]
